@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lolo Chat 3 - No Login</title>
+<title>Lolo Chat 3 - Login</title>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -122,6 +122,15 @@ userDropdown.addEventListener("change", (e) => {
   currentUser = e.target.value;
   loadMessages(); // Reload messages to update own/other styling
   updateOnline();
+  
+  // Show clear buttons only for eesti
+  if(currentUser === "eesti") {
+    clearBtn.style.display = "inline-block";
+    fullClearBtn.style.display = "inline-block";
+  } else {
+    clearBtn.style.display = "none";
+    fullClearBtn.style.display = "none";
+  }
 });
 
 // Initialize
@@ -149,28 +158,37 @@ async function init() {
   }, 60*60*1000);
 }
 
-// SEND MESSAGE
+// SEND MESSAGE - UPDATED with username
 async function send() {
   if(!msgInput.value.trim()) return;
   
   const message = {
-    user: currentUser,
+    username: currentUser,
     text: msgInput.value.trim(),
     time: new Date().toISOString(),
     type: 'message'
   };
   
-  const { error } = await supabase.from('messages').insert([message]);
-  if(!error) msgInput.value = '';
+  console.log('Sending message:', message);
+  
+  const { data, error } = await supabase.from('messages').insert([message]);
+  
+  if(error) {
+    console.error('Error sending message:', error);
+    alert('Error: ' + error.message);
+  } else {
+    console.log('Message sent successfully:', data);
+    msgInput.value = '';
+  }
 }
 
-// ADD MESSAGE TO UI
+// ADD MESSAGE TO UI - UPDATED with username
 function addMessage(msg, isOwn) {
   const div = document.createElement('div');
   div.className = `msg ${isOwn ? 'own' : ''}`;
-  div.style.backgroundColor = isOwn ? '#2563eb' : colors[msg.user] || '#334155';
+  div.style.backgroundColor = isOwn ? '#2563eb' : colors[msg.username] || '#334155';
   div.innerHTML = `
-    <strong>${msg.user}</strong><br>
+    <strong>${msg.username}</strong><br>
     ${msg.text}
     <div class="time">${new Date(msg.time).toLocaleTimeString()}</div>
   `;
@@ -178,20 +196,25 @@ function addMessage(msg, isOwn) {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// LOAD MESSAGES
+// LOAD MESSAGES - UPDATED with username
 async function loadMessages() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('messages')
     .select('*')
     .order('time', { ascending: true });
   
+  if(error) {
+    console.error('Error loading messages:', error);
+    return;
+  }
+  
   chatContainer.innerHTML = '';
   if(data) {
-    data.forEach(msg => addMessage(msg, msg.user === currentUser));
+    data.forEach(msg => addMessage(msg, msg.username === currentUser));
   }
 }
 
-// LISTEN REALTIME MESSAGES
+// LISTEN REALTIME MESSAGES - UPDATED with username
 function listenRealtimeMessages() {
   supabase
     .channel('messages')
@@ -200,12 +223,12 @@ function listenRealtimeMessages() {
       schema: 'public', 
       table: 'messages' 
     }, payload => {
-      addMessage(payload.new, payload.new.user === currentUser);
+      addMessage(payload.new, payload.new.username === currentUser);
     })
     .subscribe();
 }
 
-// HANDLE MEDIA UPLOAD
+// HANDLE MEDIA UPLOAD - UPDATED with username
 async function handleMediaUpload(e) {
   const file = e.target.files[0];
   if(!file) return;
@@ -230,24 +253,30 @@ async function handleMediaUpload(e) {
   const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
   
   const status = {
-    user: currentUser,
+    username: currentUser,
     media_url: publicUrl,
     media_type: mediaType,
     caption: msgInput.value.trim() || '',
     time: new Date().toISOString()
   };
   
-  await supabase.from('statuses').insert([status]);
-  msgInput.value = '';
-  mediaInput.value = '';
+  const { error } = await supabase.from('statuses').insert([status]);
+  
+  if(error) {
+    console.error('Error adding status:', error);
+    alert('Error adding status: ' + error.message);
+  } else {
+    msgInput.value = '';
+    mediaInput.value = '';
+  }
 }
 
-// ADD STATUS TO UI
+// ADD STATUS TO UI - UPDATED with username
 function addStatus(status) {
   const div = document.createElement('div');
   div.className = 'status-item';
   div.innerHTML = `
-    <strong>${status.user}</strong><br>
+    <strong>${status.username}</strong><br>
     ${status.caption ? status.caption + '<br>' : ''}
     ${status.media_type === 'image' 
       ? `<img src="${status.media_url}" class="status-media">` 
@@ -259,20 +288,25 @@ function addStatus(status) {
   statusContainer.scrollTop = statusContainer.scrollHeight;
 }
 
-// LOAD STATUSES
+// LOAD STATUSES - UPDATED with username
 async function loadStatuses() {
   const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('statuses')
     .select('*')
     .gt('time', oneDayAgo)
     .order('time', { ascending: false });
   
+  if(error) {
+    console.error('Error loading statuses:', error);
+    return;
+  }
+  
   statusContainer.innerHTML = '';
   if(data) data.forEach(addStatus);
 }
 
-// LISTEN REALTIME STORIES
+// LISTEN REALTIME STORIES - UPDATED with username
 function listenRealtimeStories() {
   supabase
     .channel('statuses')
@@ -301,24 +335,29 @@ function toggleStatusView() {
   }
 }
 
-// UPDATE ONLINE USERS
+// UPDATE ONLINE USERS - UPDATED with username
 async function updateOnline() {
   if(!currentUser) return;
   
-  await supabase.from('online_users').upsert({ 
-    user: currentUser, 
+  const { error } = await supabase.from('online_users').upsert({ 
+    username: currentUser, 
     last_seen: new Date().toISOString() 
   });
+  
+  if(error) {
+    console.error('Error updating online status:', error);
+    return;
+  }
   
   const fiveMinAgo = new Date(Date.now() - 5*60*1000).toISOString();
   const { data } = await supabase
     .from('online_users')
-    .select('user')
+    .select('username')
     .gt('last_seen', fiveMinAgo);
   
   if(data) {
     onlineUsersEl.style.display = "block";
-    onlineList.innerText = data.map(u => u.user).join(', ') || 'none';
+    onlineList.innerText = data.map(u => u.username).join(', ') || 'none';
   }
 }
 
@@ -329,8 +368,10 @@ async function clearAll() {
     return;
   }
   if(confirm('Clear all messages?')) {
-    await supabase.from('messages').delete().gte('id', 0);
-    chatContainer.innerHTML = '';
+    const { error } = await supabase.from('messages').delete().gte('id', 0);
+    if(!error) {
+      chatContainer.innerHTML = '';
+    }
   }
 }
 
