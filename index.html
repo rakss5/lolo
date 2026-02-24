@@ -2,29 +2,81 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Lolo Debug Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lolo Chat - Supabase</title>
 <style>
-body {background:#0f172a; color:white; font-family:Arial; padding:50px; text-align:center;}
-input, button {padding:12px; margin:10px; font-size:18px;}
-button {background:#fff; color:black; border:none; border-radius:6px; cursor:pointer;}
-#err {color:red;}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:#0f172a;font-family:Arial,sans-serif;display:flex;justify-content:center;}
+#app{width:100%;max-width:420px;height:100%;display:flex;flex-direction:column;background:#020617;}
+#topBar{position:sticky;top:0;z-index:10;background:#020617;padding:6px;display:flex;justify-content:space-between;align-items:center;}
+#onlineUsers{color:white;font-size:14px;display:none}
+button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer;margin-left:4px;}
+#logoutBtn{background:#ef4444;display:none}
+#clearBtn{background:#f97316;display:none}
+#fullClearBtn{background:#dc2626;display:none}
+#statusBtn{background:#8b5cf6;display:none}
+#chatWrap,#statusArea{flex:1;min-height:0;display:none}
+#chatContainer,#statusContainer{flex:1;overflow-y:auto;background:#1e293b;padding:10px;display:flex;flex-direction:column;}
+.msg,.status-item{max-width:85%;padding:10px 14px;margin-bottom:10px;border-radius:14px;font-size:15px;word-wrap:break-word;}
+.status-item{background:#334155;align-self:center;text-align:center;}
+.status-media{max-width:100%;max-height:300px;border-radius:10px;margin-top:8px;display:block;}
+.time{font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;}
+#input-area{position:sticky;bottom:0;background:#020617;padding:8px;display:none;gap:6px;flex-wrap:wrap;}
+#msg{flex:1;padding:12px;border-radius:20px;border:none;outline:none;min-width:120px;}
+.sendBtn,.statusBtn{width:42px;height:42px;border-radius:50%;border:none;background:#fff;font-size:20px;flex-shrink:0;}
+#mediaInput{display:none;}
+#mediaBtn{background:#10b981;}
+#loginForm{flex:1;display:flex;flex-direction:column;justify-content:center;padding:20px;}
+#loginForm input{padding:12px;margin:8px 0;border-radius:6px;border:none;}
+#loginForm button{padding:12px;margin-top:10px;background:#fff;font-weight:bold;border:none;border-radius:6px;cursor:pointer;}
+#loginForm p{color:red;text-align:center}
 </style>
 </head>
 <body>
-<h2>Lolo Login Debug (Try চাপার পর কী হচ্ছে দেখো)</h2>
+<div id="app">
+  <div id="topBar">
+    <div id="onlineUsers">O: <span id="onlineList"></span></div>
+    <div>
+      <button id="statusBtn" onclick="toggleStatusView()">Status</button>
+      <button id="clearBtn" onclick="clearAll()">CL</button>
+      <button id="fullClearBtn" onclick="fullClear()">FULLCL</button>
+      <button id="logoutBtn" onclick="logout()">Lolo2</button>
+    </div>
+  </div>
 
-<input id="uid" placeholder="uid লেখো (যেমন: eesti)">
-<br>
-<input id="pass" type="password" placeholder="pass লেখো (যেমন: eest55)">
-<br>
-<button onclick="debugLogin()">Try (Debug)</button>
+  <div id="loginForm">
+    <h3 style="color:white;text-align:center">Lolo</h3>
+    <input id="uid" placeholder="Da">
+    <input id="pass" type="password" placeholder="pay">
+    <button onclick="login()">Try</button>
+    <p id="err"></p>
+  </div>
 
-<p id="err"></p>
-<p id="step1" style="color:yellow;"></p>
-<p id="step2" style="color:yellow;"></p>
-<p id="step3" style="color:yellow;"></p>
+  <div id="chatWrap">
+    <div id="chatContainer"></div>
+  </div>
 
+  <div id="statusArea">
+    <div id="statusContainer"></div>
+  </div>
+
+  <div id="input-area">
+    <input id="msg" placeholder="TM or caption">
+    <button class="sendBtn" onclick="send()">*</button>
+    <label for="mediaInput"><button class="statusBtn" id="mediaBtn">+</button></label>
+    <input type="file" id="mediaInput" accept="image/*,video/*">
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+// Supabase config
+const supabaseUrl = 'https://hhbbwkeazqnyhdcfyqfg.supabase.co';
+const supabaseKey = 'sb_publishable_7kplsmCA9Bnjo8gQ68Ki0Q_uTZ1bp6D';
+const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
+
+// USERS & COLORS
 const users = {
   eesti: "eest55",
   radu: "rauu66",
@@ -33,25 +85,240 @@ const users = {
   bluee: "bluee78",
   blueee: "blueee81"
 };
+const colors = {
+  eesti: "#22c55e",
+  radu: "#22c55e",
+  ali: "#00f2ea",
+  ralii: "#619efa",
+  bluee: "#3b82f6",
+  blueee: "#f7bad8"
+};
+let currentUser = null;
+let showingStatus = false;
 
-function debugLogin() {
-  document.getElementById("err").innerText = "";
-  document.getElementById("step1").innerText = "ধাপ ১: Try বাটন ক্লিক হয়েছে";
-  
-  const u = document.getElementById("uid").value.trim();
-  const p = document.getElementById("pass").value.trim();
-  
-  document.getElementById("step2").innerText = "ধাপ ২: uid = " + u + " | pass = " + p;
+// ELEMENTS
+const uid = document.getElementById("uid");
+const pass = document.getElementById("pass");
+const msg = document.getElementById("msg");
+const chatWrap = document.getElementById("chatWrap");
+const chatContainer = document.getElementById("chatContainer");
+const statusArea = document.getElementById("statusArea");
+const statusContainer = document.getElementById("statusContainer");
+const loginForm = document.getElementById("loginForm");
+const logoutBtn = document.getElementById("logoutBtn");
+const clearBtn = document.getElementById("clearBtn");
+const fullClearBtn = document.getElementById("fullClearBtn");
+const statusBtn = document.getElementById("statusBtn");
+const onlineUsersEl = document.getElementById("onlineUsers");
+const onlineList = document.getElementById("onlineList");
+const err = document.getElementById("err");
+const mediaInput = document.getElementById("mediaInput");
 
-  if(!users[u] || users[u] !== p) {
-    document.getElementById("err").innerText = "Invalid User ID or Password";
-    document.getElementById("step3").innerText = "ধাপ ৩: পাসওয়ার্ড ম্যাচ করেনি";
+// LOGIN
+function login(){
+  const u = uid.value.trim();
+  const p = pass.value.trim();
+  if(!users[u] || users[u] !== p){
+    err.innerText = "Invalid User ID or Password";
+    return;
+  }
+  currentUser = u;
+  loginForm.style.display = "none";
+  chatWrap.style.display = "flex";
+  document.getElementById("input-area").style.display = "flex";
+  logoutBtn.style.display = "inline-block";
+  statusBtn.style.display = "inline-block";
+  onlineUsersEl.style.display = "block";
+
+  if(currentUser === "eesti"){
+    clearBtn.style.display = "inline-block";
+    fullClearBtn.style.display = "inline-block";
+  }
+
+  updateOnline();
+  loadMessages();
+  loadStatuses();
+  listenRealtimeMessages();
+  listenRealtimeStories();
+  mediaInput.addEventListener("change", handleMediaUpload);
+}
+
+// CHAT SEND
+async function send(){
+  const t = msg.value.trim();
+  if(!t) return;
+  const { error } = await supabase.from('messages').insert({
+    text: t,
+    user: currentUser,
+    time: Date.now()
+  });
+  if(error) alert("Send error: " + error.message);
+  msg.value = "";
+}
+
+// ADD MESSAGE
+function addMessage(d, autoRemove = true, showTime = false){
+  const div = document.createElement("div");
+  div.className = "msg";
+  div.style.background = colors[d.user] || "#999";
+  div.style.alignSelf = d.user === currentUser ? "flex-end" : "flex-start";
+  div.innerHTML = d.text || "";
+  if(showTime){
+    div.innerHTML += `<div class="time">${new Date(d.time).toLocaleTimeString()}</div>`;
+  }
+  chatContainer.prepend(div);
+  if(autoRemove) setTimeout(() => div.remove(), 15000);
+}
+
+// LOAD MESSAGES
+async function loadMessages(){
+  chatContainer.innerHTML = "";
+  const { data, error } = await supabase.from('messages').select('*').order('time', { ascending: true });
+  if(error) return console.error(error);
+  data.forEach(d => addMessage(d, currentUser !== "eesti", currentUser === "eesti"));
+}
+
+// REALTIME MESSAGES
+function listenRealtimeMessages(){
+  supabase.channel('messages').on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'messages'
+  }, payload => {
+    addMessage(payload.new, currentUser !== "eesti", currentUser === "eesti");
+  }).subscribe();
+}
+
+// STATUS / STORY with MEDIA
+async function handleMediaUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const isImage = file.type.startsWith('image/');
+  const isVideo = file.type.startsWith('video/');
+  if(!isImage && !isVideo){
+    alert("শুধু ছবি বা ভিডিও allowed!");
     return;
   }
 
-  document.getElementById("step3").innerText = "ধাপ ৩: লগইন সাকসেস! User: " + u;
-  alert("লগইন সাকসেস! User: " + u + "\n\nএখন তোমার মূল কোডে এই uid/pass চেক ঠিক আছে।");
+  const caption = msg.value.trim();
+  const path = `stories/${currentUser}/${Date.now()}_${file.name}`;
+
+  const { data, error } = await supabase.storage.from('stories').upload(path, file);
+  if(error){
+    alert("Upload error: " + error.message);
+    return;
+  }
+
+  const { data: urlData } = supabase.storage.from('stories').getPublicUrl(path);
+  const url = urlData.publicUrl;
+
+  const { error: insertError } = await supabase.from('stories').insert({
+    type: isImage ? "image" : "video",
+    url: url,
+    user: currentUser,
+    time: Date.now(),
+    text: caption || ""
+  });
+  if(insertError){
+    alert("Insert error: " + insertError.message);
+    return;
+  }
+
+  msg.value = "";
+  alert("Status uploaded! ২৪ ঘণ্টা থাকবে।");
+  mediaInput.value = "";
 }
+
+// ADD STATUS ITEM
+function addStatus(d){
+  if(Date.now() - d.time >= 86400000) return; // 24h
+
+  const div = document.createElement("div");
+  div.className = "status-item";
+  div.style.background = colors[d.user] || "#444";
+
+  let html = `<strong>${d.user}</strong>`;
+  if(d.text) html += `<br>${d.text}`;
+  html += `<br><small>${new Date(d.time).toLocaleString()}</small>`;
+
+  if(d.url){
+    if(d.type === "image"){
+      html += `<img src="${d.url}" class="status-media" alt="Status">`;
+    } else if(d.type === "video"){
+      html += `<video src="${d.url}" class="status-media" controls preload="metadata"></video>`;
+    }
+  }
+
+  div.innerHTML = html;
+  statusContainer.appendChild(div);
+}
+
+// LOAD STATUSES
+async function loadStatuses(){
+  statusContainer.innerHTML = "";
+  const { data, error } = await supabase.from('stories').select('*').order('time', { ascending: true });
+  if(error) return console.error(error);
+  data.forEach(addStatus);
+}
+
+// REALTIME STATUSES
+function listenRealtimeStories(){
+  supabase.channel('stories').on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'stories'
+  }, payload => {
+    addStatus(payload.new);
+  }).subscribe();
+}
+
+// 24h CLEANUP
+function startStatusCleanup(){
+  setInterval(async () => {
+    const now = Date.now();
+    await supabase.from('stories').delete().lt('time', now - 86400000);
+  }, 60000);
+}
+
+// TOGGLE STATUS VIEW
+function toggleStatusView(){
+  showingStatus = !showingStatus;
+  chatWrap.style.display = showingStatus ? "none" : "flex";
+  statusArea.style.display = showingStatus ? "flex" : "none";
+  statusBtn.textContent = showingStatus ? "Chat" : "Status";
+}
+
+// ONLINE USERS
+async function updateOnline(){
+  const { data } = await supabase.from('online_users').select('user').eq('online', true);
+  onlineList.innerText = data ? data.filter(u => u.user !== currentUser).map(u => u.user).join(", ") || "N" : "N";
+}
+
+// CLEAR & LOGOUT
+async function clearAll(){
+  if(currentUser==="eesti"){
+    await supabase.from('messages').delete().neq('id', '0');
+  }
+}
+async function fullClear(){
+  if(currentUser==="eesti"){
+    await supabase.from('messages').delete().neq('id', '0');
+    await supabase.from('stories').delete().neq('id', '0');
+  }
+}
+function logout(){
+  supabase.from('online_users').delete().eq('user', currentUser);
+  location.reload();
+}
+
+// ENTER KEYS
+msg.addEventListener("keydown", e=> e.key==="Enter" && send());
+uid.addEventListener("keydown", e=> e.key==="Enter" && login());
+pass.addEventListener("keydown", e=> e.key==="Enter" && login());
+
+// START CLEANUP
+startStatusCleanup();
 </script>
 </body>
 </html>
