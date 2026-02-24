@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
             username: currentUser,
             text: msgInput.value.trim(),
             time: new Date().toISOString(),
-            type: 'message'
+            // type: 'message'  // এই লাইনটা কমেন্ট করে দিন বা মুছে দিন
         };
         
         console.log('Sending message:', message);
