@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LOAD MESSAGES
     async function loadMessages() {
+        console.log('Loading messages...');
         const { data, error } = await supabase
             .from('messages')
             .select('*')
@@ -105,9 +106,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if(error) {
             console.error('Error loading messages:', error);
+            alert('Error loading messages: ' + error.message);
             return;
         }
         
+        console.log('Messages loaded:', data);
         chatContainer.innerHTML = '';
         if(data) {
             data.forEach(msg => addMessage(msg, msg.username === currentUser));
@@ -116,6 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LISTEN REALTIME MESSAGES
     function listenRealtimeMessages() {
+        console.log('Setting up realtime messages listener...');
         supabase
             .channel('messages-channel')
             .on('postgres_changes', { 
@@ -123,13 +127,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 schema: 'public', 
                 table: 'messages' 
             }, payload => {
+                console.log('New message received:', payload.new);
                 addMessage(payload.new, payload.new.username === currentUser);
             })
-            .subscribe();
+            .subscribe((status) => {
+                console.log('Realtime subscription status:', status);
+            });
     }
     
     // LISTEN REALTIME STORIES
     function listenRealtimeStories() {
+        console.log('Setting up realtime statuses listener...');
         supabase
             .channel('statuses-channel')
             .on('postgres_changes', { 
@@ -137,15 +145,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 schema: 'public', 
                 table: 'statuses' 
             }, payload => {
+                console.log('New status received:', payload.new);
                 if(showingStatus) addStatus(payload.new);
             })
-            .subscribe();
+            .subscribe((status) => {
+                console.log('Realtime status subscription:', status);
+            });
     }
     
     // HANDLE MEDIA UPLOAD
     async function handleMediaUpload(e) {
         const file = e.target.files[0];
         if(!file) return;
+        
+        console.log('Uploading file:', file.name);
         
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
@@ -156,6 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .upload(filePath, file);
             
         if(uploadError) {
+            console.error('Upload error:', uploadError);
             alert('Upload failed: ' + uploadError.message);
             return;
         }
@@ -163,6 +177,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const { data: { publicUrl } } = supabase.storage
             .from('media')
             .getPublicUrl(filePath);
+        
+        console.log('File uploaded, public URL:', publicUrl);
         
         const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
         
@@ -174,6 +190,8 @@ document.addEventListener('DOMContentLoaded', function() {
             time: new Date().toISOString()
         };
         
+        console.log('Adding status:', status);
+        
         const { error } = await supabase.from('statuses').insert([status]);
         
         if(error) {
@@ -182,6 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             msgInput.value = '';
             mediaInput.value = '';
+            alert('Status uploaded successfully!');
         }
     }
     
@@ -204,6 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LOAD STATUSES
     async function loadStatuses() {
+        console.log('Loading statuses...');
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
         const { data, error } = await supabase
             .from('statuses')
@@ -213,9 +233,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if(error) {
             console.error('Error loading statuses:', error);
+            alert('Error loading statuses: ' + error.message);
             return;
         }
         
+        console.log('Statuses loaded:', data);
         statusContainer.innerHTML = '';
         if(data) data.forEach(addStatus);
     }
@@ -271,6 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const { error } = await supabase.from('messages').delete().gte('id', 0);
             if(!error) {
                 chatContainer.innerHTML = '';
+                alert('All messages cleared!');
             }
         }
     }
@@ -286,11 +309,34 @@ document.addEventListener('DOMContentLoaded', function() {
             await supabase.from('statuses').delete().gte('id', 0);
             chatContainer.innerHTML = '';
             statusContainer.innerHTML = '';
+            alert('All data cleared!');
+        }
+    }
+    
+    // TEST FUNCTION
+    async function testConnection() {
+        console.log('Testing Supabase connection...');
+        const { data, error } = await supabase
+            .from('messages')
+            .select('count')
+            .limit(1);
+            
+        if(error) {
+            console.error('Connection test failed:', error);
+            alert('Connection failed: ' + error.message);
+        } else {
+            console.log('Connection successful!');
+            alert('Supabase connected successfully!');
         }
     }
     
     // Initialize
     async function init() {
+        console.log('Initializing app...');
+        
+        // Test connection first
+        await testConnection();
+        
         if(currentUser === "eesti") {
             clearBtn.style.display = "inline-block";
             fullClearBtn.style.display = "inline-block";
@@ -308,6 +354,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
             await supabase.from('statuses').delete().lt('time', oneDayAgo);
         }, 60*60*1000);
+        
+        console.log('App initialized!');
     }
     
     init();
