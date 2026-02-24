@@ -19,17 +19,19 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 #chatWrap,#statusArea{flex:1;min-height:0;display:none}
 #chatContainer,#statusContainer{flex:1;overflow-y:auto;background:#1e293b;padding:10px;display:flex;flex-direction:column;}
 .msg,.status-item{max-width:85%;padding:10px 14px;margin-bottom:10px;border-radius:14px;font-size:15px;word-wrap:break-word;}
+.msg{background:#334155;color:white;align-self:flex-start;}
+.msg.own{background:#2563eb;align-self:flex-end;}
 .status-item{background:#334155;align-self:center;text-align:center;}
 .status-media{max-width:100%;max-height:300px;border-radius:10px;margin-top:8px;display:block;}
 .time{font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;}
 #input-area{position:sticky;bottom:0;background:#020617;padding:8px;display:none;gap:6px;flex-wrap:wrap;}
 #msg{flex:1;padding:12px;border-radius:20px;border:none;outline:none;min-width:120px;}
-.sendBtn,.statusBtn{width:42px;height:42px;border-radius:50%;border:none;background:#fff;font-size:20px;flex-shrink:0;}
+.sendBtn,.statusBtn{width:42px;height:42px;border-radius:50%;border:none;background:#fff;font-size:20px;flex-shrink:0;color:#000;}
 #mediaInput{display:none;}
-#mediaBtn{background:#10b981;}
+#mediaBtn{background:#10b981;color:white;font-size:20px;line-height:1;}
 #loginForm{flex:1;display:flex;flex-direction:column;justify-content:center;padding:20px;}
 #loginForm input{padding:12px;margin:8px 0;border-radius:6px;border:none;}
-#loginForm button{padding:12px;margin-top:10px;background:#34655;font-weight:bold;border:none;border-radius:6px;cursor:pointer;}
+#loginForm button{padding:12px;margin-top:10px;background:#3b82f6;color:white;font-weight:bold;border:none;border-radius:6px;cursor:pointer;}
 #loginForm p{color:red;text-align:center}
 </style>
 </head>
@@ -63,7 +65,7 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 
   <div id="input-area">
     <input id="msg" placeholder="TM or caption">
-    <button class="sendBtn" id="sendBtn">*</button>
+    <button class="sendBtn" id="sendBtn">📤</button>
     <label for="mediaInput"><button class="statusBtn" id="mediaBtn">+</button></label>
     <input type="file" id="mediaInput" accept="image/*,video/*">
   </div>
@@ -99,7 +101,7 @@ let showingStatus = false;
 // ELEMENTS
 const uid = document.getElementById("uid");
 const pass = document.getElementById("pass");
-const msg = document.getElementById("msg");
+const msgInput = document.getElementById("msg");
 const chatWrap = document.getElementById("chatWrap");
 const chatContainer = document.getElementById("chatContainer");
 const statusArea = document.getElementById("statusArea");
@@ -113,55 +115,272 @@ const onlineUsersEl = document.getElementById("onlineUsers");
 const onlineList = document.getElementById("onlineList");
 const err = document.getElementById("err");
 const mediaInput = document.getElementById("mediaInput");
+const sendBtn = document.getElementById("sendBtn");
+const mediaBtn = document.getElementById("mediaBtn");
+const tryBtn = document.getElementById("tryBtn");
 
-// Event Listeners (inline onclick remove করা হয়েছে)
-document.getElementById("tryBtn").addEventListener("click", login);
-document.getElementById("sendBtn").addEventListener("click", send);
-document.getElementById("mediaBtn").addEventListener("click", () => mediaInput.click());
-document.getElementById("statusBtn").addEventListener("click", toggleStatusView);
-document.getElementById("logoutBtn").addEventListener("click", logout);
-document.getElementById("clearBtn").addEventListener("click", clearAll);
-document.getElementById("fullClearBtn").addEventListener("click", fullClear);
-msg.addEventListener("keydown", e => e.key === "Enter" && send());
+// Event Listeners
+tryBtn.addEventListener("click", login);
+sendBtn.addEventListener("click", send);
+mediaBtn.addEventListener("click", () => mediaInput.click());
+statusBtn.addEventListener("click", toggleStatusView);
+logoutBtn.addEventListener("click", logout);
+clearBtn.addEventListener("click", clearAll);
+fullClearBtn.addEventListener("click", fullClear);
+msgInput.addEventListener("keydown", e => e.key === "Enter" && send());
 uid.addEventListener("keydown", e => e.key === "Enter" && login());
 pass.addEventListener("keydown", e => e.key === "Enter" && login());
 
 // LOGIN FUNCTION
-function login(){
-  alert("ধাপ ১: Try ক্লিক হয়েছে");  // debug
+async function login() {
   const u = uid.value.trim();
   const p = pass.value.trim();
-  alert("ধাপ ২: uid = " + u + " | pass = " + p);  // debug
-  if(!users[u] || users[u] !== p){
+  
+  if(!users[u] || users[u] !== p) {
     err.innerText = "Invalid User ID or Password";
     return;
   }
-  alert("ধাপ ৩: লগইন সাকসেস! চ্যাট দেখানোর চেষ্টা করছি");  // debug
+  
   currentUser = u;
   loginForm.style.display = "none";
-  alert("ধাপ ৪: লগইন ফর্ম লুকানো হয়েছে");  // debug
   chatWrap.style.display = "flex";
   document.getElementById("input-area").style.display = "flex";
   logoutBtn.style.display = "inline-block";
   statusBtn.style.display = "inline-block";
   onlineUsersEl.style.display = "block";
 
-  if(currentUser === "eesti"){
+  if(currentUser === "eesti") {
     clearBtn.style.display = "inline-block";
     fullClearBtn.style.display = "inline-block";
   }
 
-  updateOnline();
+  await updateOnline();
   loadMessages();
   loadStatuses();
   listenRealtimeMessages();
   listenRealtimeStories();
   mediaInput.addEventListener("change", handleMediaUpload);
-  alert("ধাপ ৫: সব লোড হয়েছে!");  // debug
 }
 
-// বাকি ফাংশনগুলো (send, addMessage, loadMessages, listenRealtimeMessages, handleMediaUpload, addStatus, loadStatuses, listenRealtimeStories, startStatusCleanup, toggleStatusView, updateOnline, clearAll, fullClear, logout) আগের মতোই রাখা হয়েছে। পুরো কোডে শুধু login() এবং event listeners চেঞ্জ করা হয়েছে।
+// SEND MESSAGE
+async function send() {
+  if(!currentUser || !msgInput.value.trim()) return;
+  
+  const message = {
+    user: currentUser,
+    text: msgInput.value.trim(),
+    time: new Date().toISOString(),
+    type: 'message'
+  };
+  
+  const { error } = await supabase.from('messages').insert([message]);
+  if(!error) msgInput.value = '';
+}
 
+// ADD MESSAGE TO UI
+function addMessage(msg, isOwn) {
+  const div = document.createElement('div');
+  div.className = `msg ${isOwn ? 'own' : ''}`;
+  div.style.backgroundColor = isOwn ? '#2563eb' : colors[msg.user] || '#334155';
+  div.innerHTML = `
+    <strong>${msg.user}</strong><br>
+    ${msg.text}
+    <div class="time">${new Date(msg.time).toLocaleTimeString()}</div>
+  `;
+  chatContainer.appendChild(div);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// LOAD MESSAGES
+async function loadMessages() {
+  const { data } = await supabase
+    .from('messages')
+    .select('*')
+    .order('time', { ascending: true });
+  
+  chatContainer.innerHTML = '';
+  if(data) {
+    data.forEach(msg => addMessage(msg, msg.user === currentUser));
+  }
+}
+
+// LISTEN REALTIME MESSAGES
+function listenRealtimeMessages() {
+  supabase
+    .channel('messages')
+    .on('postgres_changes', { 
+      event: 'INSERT', 
+      schema: 'public', 
+      table: 'messages' 
+    }, payload => {
+      if(payload.new.user !== currentUser) {
+        addMessage(payload.new, false);
+      }
+    })
+    .subscribe();
+}
+
+// HANDLE MEDIA UPLOAD
+async function handleMediaUpload(e) {
+  const file = e.target.files[0];
+  if(!file || !currentUser) return;
+  
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Date.now()}.${fileExt}`;
+  const filePath = `${currentUser}/${fileName}`;
+  
+  const { error: uploadError } = await supabase.storage
+    .from('media')
+    .upload(filePath, file);
+    
+  if(uploadError) {
+    alert('Upload failed');
+    return;
+  }
+  
+  const { data: { publicUrl } } = supabase.storage
+    .from('media')
+    .getPublicUrl(filePath);
+    
+  const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
+  
+  const status = {
+    user: currentUser,
+    media_url: publicUrl,
+    media_type: mediaType,
+    caption: msgInput.value.trim() || '',
+    time: new Date().toISOString()
+  };
+  
+  await supabase.from('statuses').insert([status]);
+  msgInput.value = '';
+  mediaInput.value = '';
+}
+
+// ADD STATUS TO UI
+function addStatus(status) {
+  const div = document.createElement('div');
+  div.className = 'status-item';
+  div.innerHTML = `
+    <strong>${status.user}</strong><br>
+    ${status.caption ? status.caption + '<br>' : ''}
+    ${status.media_type === 'image' 
+      ? `<img src="${status.media_url}" class="status-media">` 
+      : `<video src="${status.media_url}" class="status-media" controls></video>`
+    }
+    <div class="time">${new Date(status.time).toLocaleTimeString()}</div>
+  `;
+  statusContainer.appendChild(div);
+  statusContainer.scrollTop = statusContainer.scrollHeight;
+}
+
+// LOAD STATUSES
+async function loadStatuses() {
+  const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
+  const { data } = await supabase
+    .from('statuses')
+    .select('*')
+    .gt('time', oneDayAgo)
+    .order('time', { ascending: false });
+  
+  statusContainer.innerHTML = '';
+  if(data) data.forEach(addStatus);
+}
+
+// LISTEN REALTIME STORIES
+function listenRealtimeStories() {
+  supabase
+    .channel('statuses')
+    .on('postgres_changes', { 
+      event: 'INSERT', 
+      schema: 'public', 
+      table: 'statuses' 
+    }, payload => {
+      if(showingStatus) addStatus(payload.new);
+    })
+    .subscribe();
+}
+
+// TOGGLE STATUS VIEW
+function toggleStatusView() {
+  showingStatus = !showingStatus;
+  if(showingStatus) {
+    chatWrap.style.display = "none";
+    statusArea.style.display = "flex";
+    statusBtn.style.background = "#f97316";
+    loadStatuses();
+  } else {
+    chatWrap.style.display = "flex";
+    statusArea.style.display = "none";
+    statusBtn.style.background = "#8b5cf6";
+  }
+}
+
+// UPDATE ONLINE USERS
+async function updateOnline() {
+  if(!currentUser) return;
+  
+  await supabase.from('online_users').upsert({ 
+    user: currentUser, 
+    last_seen: new Date().toISOString() 
+  });
+  
+  const fiveMinAgo = new Date(Date.now() - 5*60*1000).toISOString();
+  const { data } = await supabase
+    .from('online_users')
+    .select('user')
+    .gt('last_seen', fiveMinAgo);
+  
+  if(data) {
+    onlineList.innerText = data.map(u => u.user).join(', ') || 'none';
+  }
+}
+
+// CLEAR ALL MESSAGES (EESTI ONLY)
+async function clearAll() {
+  if(currentUser !== 'eesti') return;
+  if(confirm('Clear all messages?')) {
+    await supabase.from('messages').delete().gte('id', 0);
+    chatContainer.innerHTML = '';
+  }
+}
+
+// FULL CLEAR (EESTI ONLY)
+async function fullClear() {
+  if(currentUser !== 'eesti') return;
+  if(confirm('Delete ALL data including statuses?')) {
+    await supabase.from('messages').delete().gte('id', 0);
+    await supabase.from('statuses').delete().gte('id', 0);
+    chatContainer.innerHTML = '';
+    statusContainer.innerHTML = '';
+  }
+}
+
+// LOGOUT
+function logout() {
+  currentUser = null;
+  loginForm.style.display = "flex";
+  chatWrap.style.display = "none";
+  statusArea.style.display = "none";
+  document.getElementById("input-area").style.display = "none";
+  logoutBtn.style.display = "none";
+  statusBtn.style.display = "none";
+  clearBtn.style.display = "none";
+  fullClearBtn.style.display = "none";
+  onlineUsersEl.style.display = "none";
+  uid.value = '';
+  pass.value = '';
+  err.innerText = '';
+}
+
+// AUTO UPDATE ONLINE USERS
+setInterval(updateOnline, 30000);
+
+// AUTO CLEAN OLD STATUSES
+setInterval(async () => {
+  const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
+  await supabase.from('statuses').delete().lt('time', oneDayAgo);
+}, 60*60*1000);
 </script>
 </body>
 </html>
