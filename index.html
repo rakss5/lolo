@@ -3,20 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lolo Chat 3</title>
+<title>Lolo Chat 3 - No Login</title>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:#0f172a;font-family:Arial,sans-serif;display:flex;justify-content:center;}
 #app{width:100%;max-width:420px;height:100%;display:flex;flex-direction:column;background:#020617;}
 #topBar{position:sticky;top:0;z-index:10;background:#020617;padding:6px;display:flex;justify-content:space-between;align-items:center;}
+#userSelect{color:white;font-size:14px;display:flex;align-items:center;gap:5px;}
+#userSelect select{background:#1e293b;color:white;border:none;padding:4px;border-radius:4px;}
 #onlineUsers{color:white;font-size:14px;display:none}
 button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer;margin-left:4px;}
-#logoutBtn{background:#ef4444;display:none}
+#logoutBtn{background:#ef4444;display:inline-block}
 #clearBtn{background:#f97316;display:none}
 #fullClearBtn{background:#dc2626;display:none}
-#statusBtn{background:#8b5cf6;display:none}
-#chatWrap,#statusArea{flex:1;min-height:0;display:none}
+#statusBtn{background:#8b5cf6;display:inline-block}
+#chatWrap,#statusArea{flex:1;min-height:0;display:flex}
 #chatContainer,#statusContainer{flex:1;overflow-y:auto;background:#1e293b;padding:10px;display:flex;flex-direction:column;}
 .msg,.status-item{max-width:85%;padding:10px 14px;margin-bottom:10px;border-radius:14px;font-size:15px;word-wrap:break-word;}
 .msg{background:#334155;color:white;align-self:flex-start;}
@@ -24,42 +26,41 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 .status-item{background:#334155;align-self:center;text-align:center;}
 .status-media{max-width:100%;max-height:300px;border-radius:10px;margin-top:8px;display:block;}
 .time{font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;}
-#input-area{position:sticky;bottom:0;background:#020617;padding:8px;display:none;gap:6px;flex-wrap:wrap;}
+#input-area{position:sticky;bottom:0;background:#020617;padding:8px;display:flex;gap:6px;flex-wrap:wrap;}
 #msg{flex:1;padding:12px;border-radius:20px;border:none;outline:none;min-width:120px;}
 .sendBtn,.statusBtn{width:42px;height:42px;border-radius:50%;border:none;background:#fff;font-size:20px;flex-shrink:0;color:#000;}
 #mediaInput{display:none;}
 #mediaBtn{background:#10b981;color:white;font-size:20px;line-height:1;}
-#loginForm{flex:1;display:flex;flex-direction:column;justify-content:center;padding:20px;}
-#loginForm input{padding:12px;margin:8px 0;border-radius:6px;border:none;}
-#loginForm button{padding:12px;margin-top:10px;background:#3b82f6;color:white;font-weight:bold;border:none;border-radius:6px;cursor:pointer;}
-#loginForm p{color:red;text-align:center}
+#loginForm{display:none;}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="topBar">
+    <div id="userSelect">
+      <span style="color:white;">User:</span>
+      <select id="userDropdown">
+        <option value="eesti">eesti</option>
+        <option value="radu">radu</option>
+        <option value="ali">ali</option>
+        <option value="ralii">ralii</option>
+        <option value="bluee">bluee</option>
+        <option value="blueee">blueee</option>
+      </select>
+    </div>
     <div id="onlineUsers">Online: <span id="onlineList"></span></div>
     <div>
       <button id="statusBtn">Status</button>
       <button id="clearBtn">CL</button>
       <button id="fullClearBtn">FULLCL</button>
-      <button id="logoutBtn">Logout</button>
     </div>
-  </div>
-
-  <div id="loginForm">
-    <h3 style="color:white;text-align:center">Lolo</h3>
-    <input id="uid" placeholder="Username">
-    <input id="pass" type="password" placeholder="Password">
-    <button id="tryBtn">Try</button>
-    <p id="err"></p>
   </div>
 
   <div id="chatWrap">
     <div id="chatContainer"></div>
   </div>
 
-  <div id="statusArea">
+  <div id="statusArea" style="display:none;">
     <div id="statusContainer"></div>
   </div>
 
@@ -81,15 +82,7 @@ const SUPABASE_KEY = 'sb_publishable_7kplsmCA9Bnjo8gQ68Ki0Q_uTZ1bp6D';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // USERS & COLORS
-const users = {
-  eesti: "*****",
-  radu: "rauu66",
-  ali: "Paper@",
-  ralii: "Rank@",
-  bluee: "bluee78",
-  blueee: "blueee81"
-};
-
+const users = ["eesti", "radu", "ali", "ralii", "bluee", "blueee"];
 const colors = {
   eesti: "#22c55e",
   radu: "#22c55e",
@@ -99,60 +92,41 @@ const colors = {
   blueee: "#f7bad8"
 };
 
-let currentUser = null;
+let currentUser = "eesti"; // Default user
 let showingStatus = false;
 
 // DOM Elements
-const uid = document.getElementById("uid");
-const pass = document.getElementById("pass");
+const userDropdown = document.getElementById("userDropdown");
 const msgInput = document.getElementById("msg");
 const chatWrap = document.getElementById("chatWrap");
 const chatContainer = document.getElementById("chatContainer");
 const statusArea = document.getElementById("statusArea");
 const statusContainer = document.getElementById("statusContainer");
-const loginForm = document.getElementById("loginForm");
-const logoutBtn = document.getElementById("logoutBtn");
 const clearBtn = document.getElementById("clearBtn");
 const fullClearBtn = document.getElementById("fullClearBtn");
 const statusBtn = document.getElementById("statusBtn");
 const onlineUsersEl = document.getElementById("onlineUsers");
 const onlineList = document.getElementById("onlineList");
-const err = document.getElementById("err");
 const mediaInput = document.getElementById("mediaInput");
 const sendBtn = document.getElementById("sendBtn");
 const mediaBtn = document.getElementById("mediaBtn");
-const tryBtn = document.getElementById("tryBtn");
 
 // Event Listeners
-tryBtn.addEventListener("click", login);
 sendBtn.addEventListener("click", send);
 mediaBtn.addEventListener("click", () => mediaInput.click());
 statusBtn.addEventListener("click", toggleStatusView);
-logoutBtn.addEventListener("click", logout);
 clearBtn.addEventListener("click", clearAll);
 fullClearBtn.addEventListener("click", fullClear);
 msgInput.addEventListener("keydown", e => e.key === "Enter" && send());
-uid.addEventListener("keydown", e => e.key === "Enter" && login());
-pass.addEventListener("keydown", e => e.key === "Enter" && login());
+userDropdown.addEventListener("change", (e) => {
+  currentUser = e.target.value;
+  loadMessages(); // Reload messages to update own/other styling
+  updateOnline();
+});
 
-// LOGIN FUNCTION
-async function login() {
-  const u = uid.value.trim();
-  const p = pass.value.trim();
-  
-  if(!users[u] || users[u] !== p) {
-    err.innerText = "Invalid User ID or Password";
-    return;
-  }
-  
-  currentUser = u;
-  loginForm.style.display = "none";
-  chatWrap.style.display = "flex";
-  document.getElementById("input-area").style.display = "flex";
-  logoutBtn.style.display = "inline-block";
-  statusBtn.style.display = "inline-block";
-  onlineUsersEl.style.display = "block";
-
+// Initialize
+async function init() {
+  // Show clear buttons for eesti
   if(currentUser === "eesti") {
     clearBtn.style.display = "inline-block";
     fullClearBtn.style.display = "inline-block";
@@ -164,11 +138,20 @@ async function login() {
   listenRealtimeMessages();
   listenRealtimeStories();
   mediaInput.addEventListener("change", handleMediaUpload);
+  
+  // Auto update online users
+  setInterval(updateOnline, 30000);
+  
+  // Auto clean old statuses
+  setInterval(async () => {
+    const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
+    await supabase.from('statuses').delete().lt('time', oneDayAgo);
+  }, 60*60*1000);
 }
 
 // SEND MESSAGE
 async function send() {
-  if(!currentUser || !msgInput.value.trim()) return;
+  if(!msgInput.value.trim()) return;
   
   const message = {
     user: currentUser,
@@ -217,9 +200,7 @@ function listenRealtimeMessages() {
       schema: 'public', 
       table: 'messages' 
     }, payload => {
-      if(payload.new.user !== currentUser) {
-        addMessage(payload.new, false);
-      }
+      addMessage(payload.new, payload.new.user === currentUser);
     })
     .subscribe();
 }
@@ -227,7 +208,7 @@ function listenRealtimeMessages() {
 // HANDLE MEDIA UPLOAD
 async function handleMediaUpload(e) {
   const file = e.target.files[0];
-  if(!file || !currentUser) return;
+  if(!file) return;
   
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}.${fileExt}`;
@@ -238,7 +219,7 @@ async function handleMediaUpload(e) {
     .upload(filePath, file);
     
   if(uploadError) {
-    alert('Upload failed');
+    alert('Upload failed: ' + uploadError.message);
     return;
   }
   
@@ -336,13 +317,17 @@ async function updateOnline() {
     .gt('last_seen', fiveMinAgo);
   
   if(data) {
+    onlineUsersEl.style.display = "block";
     onlineList.innerText = data.map(u => u.user).join(', ') || 'none';
   }
 }
 
 // CLEAR ALL MESSAGES (EESTI ONLY)
 async function clearAll() {
-  if(currentUser !== 'eesti') return;
+  if(currentUser !== 'eesti') {
+    alert('Only eesti can clear messages');
+    return;
+  }
   if(confirm('Clear all messages?')) {
     await supabase.from('messages').delete().gte('id', 0);
     chatContainer.innerHTML = '';
@@ -351,7 +336,10 @@ async function clearAll() {
 
 // FULL CLEAR (EESTI ONLY)
 async function fullClear() {
-  if(currentUser !== 'eesti') return;
+  if(currentUser !== 'eesti') {
+    alert('Only eesti can clear all data');
+    return;
+  }
   if(confirm('Delete ALL data including statuses?')) {
     await supabase.from('messages').delete().gte('id', 0);
     await supabase.from('statuses').delete().gte('id', 0);
@@ -360,31 +348,8 @@ async function fullClear() {
   }
 }
 
-// LOGOUT
-function logout() {
-  currentUser = null;
-  loginForm.style.display = "flex";
-  chatWrap.style.display = "none";
-  statusArea.style.display = "none";
-  document.getElementById("input-area").style.display = "none";
-  logoutBtn.style.display = "none";
-  statusBtn.style.display = "none";
-  clearBtn.style.display = "none";
-  fullClearBtn.style.display = "none";
-  onlineUsersEl.style.display = "none";
-  uid.value = '';
-  pass.value = '';
-  err.innerText = '';
-}
-
-// AUTO UPDATE ONLINE USERS
-setInterval(updateOnline, 30000);
-
-// AUTO CLEAN OLD STATUSES
-setInterval(async () => {
-  const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
-  await supabase.from('statuses').delete().lt('time', oneDayAgo);
-}, 60*60*1000);
+// Start the app
+init();
 </script>
 </body>
 </html>
