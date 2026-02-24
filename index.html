@@ -1,38 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Test</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lolo Chat 3 - Login</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:#0f172a;font-family:Arial,sans-serif;display:flex;justify-content:center;}
+#app{width:100%;max-width:420px;height:100%;display:flex;flex-direction:column;background:#020617;}
+#topBar{position:sticky;top:0;z-index:10;background:#020617;padding:6px;display:flex;justify-content:space-between;align-items:center;}
+#userSelect{color:white;font-size:14px;display:flex;align-items:center;gap:5px;}
+#userSelect select{background:#1e293b;color:white;border:none;padding:4px;border-radius:4px;}
+#onlineUsers{color:white;font-size:14px;display:none}
+button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer;margin-left:4px;}
+#logoutBtn{background:#ef4444;display:inline-block}
+#clearBtn{background:#f97316;display:none}
+#fullClearBtn{background:#dc2626;display:none}
+#statusBtn{background:#8b5cf6;display:inline-block}
+#chatWrap,#statusArea{flex:1;min-height:0;display:flex}
+#chatContainer,#statusContainer{flex:1;overflow-y:auto;background:#1e293b;padding:10px;display:flex;flex-direction:column;}
+.msg,.status-item{max-width:85%;padding:10px 14px;margin-bottom:10px;border-radius:14px;font-size:15px;word-wrap:break-word;}
+.msg{background:#334155;color:white;align-self:flex-start;}
+.msg.own{background:#2563eb;align-self:flex-end;}
+.status-item{background:#334155;align-self:center;text-align:center;}
+.status-media{max-width:100%;max-height:300px;border-radius:10px;margin-top:8px;display:block;}
+.time{font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;}
+#input-area{position:sticky;bottom:0;background:#020617;padding:8px;display:flex;gap:6px;flex-wrap:wrap;}
+#msg{flex:1;padding:12px;border-radius:20px;border:none;outline:none;min-width:120px;}
+.sendBtn,.statusBtn{width:42px;height:42px;border-radius:50%;border:none;background:#fff;font-size:20px;flex-shrink:0;color:#000;}
+#mediaInput{display:none;}
+#mediaBtn{background:#10b981;color:white;font-size:20px;line-height:1;}
+#loginForm{display:none;}
+</style>
 </head>
 <body>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script>
-    const SUPABASE_URL = 'https://hhbbwkeazqnyhdcfyqfg.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_7kplsmCA9Bnjo8gQ68Ki0Q_uTZ1bp6D';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    
-    async function test() {
-        console.log('Testing connection...');
-        
-        // টেস্ট মেসেজ পাঠান
-        const { data, error } = await supabase
-            .from('messages')
-            .insert([{
-                username: 'test',
-                text: 'Hello ' + new Date().toLocaleTimeString(),
-                time: new Date().toISOString(),
-                type: 'message'
-            }]);
-            
-        if (error) {
-            console.error('Error:', error);
-            alert('Error: ' + error.message);
-        } else {
-            console.log('Success:', data);
-            alert('Message sent successfully!');
-        }
-    }
-    
-    test();
-    </script>
+<div id="app">
+  <div id="topBar">
+    <div id="userSelect">
+      <span style="color:white;">User:</span>
+      <select id="userDropdown">
+        <option value="eesti">eesti</option>
+        <option value="radu">radu</option>
+        <option value="ali">ali</option>
+        <option value="ralii">ralii</option>
+        <option value="bluee">bluee</option>
+        <option value="blueee">blueee</option>
+      </select>
+    </div>
+    <div id="onlineUsers">Online: <span id="onlineList"></span></div>
+    <div>
+      <button id="statusBtn">Status</button>
+      <button id="clearBtn">CL</button>
+      <button id="fullClearBtn">FULLCL</button>
+    </div>
+  </div>
+
+  <div id="chatWrap">
+    <div id="chatContainer"></div>
+  </div>
+
+  <div id="statusArea" style="display:none;">
+    <div id="statusContainer"></div>
+  </div>
+
+  <div id="input-area">
+    <input id="msg" placeholder="Type message or caption">
+    <button class="sendBtn" id="sendBtn">📤</button>
+    <label for="mediaInput"><button class="statusBtn" id="mediaBtn">+</button></label>
+    <input type="file" id="mediaInput" accept="image/*,video/*">
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
