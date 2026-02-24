@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lolo Chat 2</title>
+<title>Lolo Chat 3</title>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -38,19 +38,19 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 <body>
 <div id="app">
   <div id="topBar">
-    <div id="onlineUsers">O: <span id="onlineList"></span></div>
+    <div id="onlineUsers">Online: <span id="onlineList"></span></div>
     <div>
       <button id="statusBtn">Status</button>
       <button id="clearBtn">CL</button>
       <button id="fullClearBtn">FULLCL</button>
-      <button id="logoutBtn">Lolo2</button>
+      <button id="logoutBtn">Logout</button>
     </div>
   </div>
 
   <div id="loginForm">
     <h3 style="color:white;text-align:center">Lolo</h3>
-    <input id="uid" placeholder="Da">
-    <input id="pass" type="password" placeholder="pay">
+    <input id="uid" placeholder="Username">
+    <input id="pass" type="password" placeholder="Password">
     <button id="tryBtn">Try</button>
     <p id="err"></p>
   </div>
@@ -64,7 +64,7 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
   </div>
 
   <div id="input-area">
-    <input id="msg" placeholder="TM or caption">
+    <input id="msg" placeholder="Type message or caption">
     <button class="sendBtn" id="sendBtn">📤</button>
     <label for="mediaInput"><button class="statusBtn" id="mediaBtn">+</button></label>
     <input type="file" id="mediaInput" accept="image/*,video/*">
@@ -73,20 +73,23 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-// Supabase config
-const supabaseUrl = 'https://hhbbwkeazqnyhdcfyqfg.supabase.co';
-const supabaseKey = 'sb_publishable_7kplsmCA9Bnjo8gQ68Ki0Q_uTZ1bp6D';
-const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
+// Your exact Supabase configuration
+const SUPABASE_URL = 'https://hhbbwkeazqnyhdcfyqfg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7kplsmCA9Bnjo8gQ68Ki0Q_uTZ1bp6D';
+
+// Initialize Supabase
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // USERS & COLORS
 const users = {
-  eesti: "eest55",
+  eesti: "*****",
   radu: "rauu66",
   ali: "Paper@",
   ralii: "Rank@",
   bluee: "bluee78",
   blueee: "blueee81"
 };
+
 const colors = {
   eesti: "#22c55e",
   radu: "#22c55e",
@@ -95,10 +98,11 @@ const colors = {
   bluee: "#3b82f6",
   blueee: "#f7bad8"
 };
+
 let currentUser = null;
 let showingStatus = false;
 
-// ELEMENTS
+// DOM Elements
 const uid = document.getElementById("uid");
 const pass = document.getElementById("pass");
 const msgInput = document.getElementById("msg");
@@ -241,7 +245,7 @@ async function handleMediaUpload(e) {
   const { data: { publicUrl } } = supabase.storage
     .from('media')
     .getPublicUrl(filePath);
-    
+  
   const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
   
   const status = {
