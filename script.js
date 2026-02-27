@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ralii: "#619efa"
     };
     
-    let currentUser = "eesti";
+    let currentUser = null; // শুরুতে null
     let showingStatus = false;
     
     // DOM Elements
@@ -40,14 +40,28 @@ document.addEventListener('DOMContentLoaded', function() {
     statusViewBtn.addEventListener("click", toggleStatusView);
     fullClearBtn.addEventListener("click", fullClear);
     msgInput.addEventListener("keydown", e => e.key === "Enter" && send());
+    
+    // ইউজার সিলেক্ট করার পর
     userDropdown.addEventListener("change", (e) => {
-        currentUser = e.target.value;
-        loadMessages();
-        updateOnline();
+        if(e.target.value) {
+            currentUser = e.target.value;
+            console.log('User selected:', currentUser);
+            
+            // মেসেজ লোড এবং অনলাইন আপডেট
+            loadMessages();
+            updateOnline();
+            
+            // স্ট্যাটাস লোড
+            loadStatuses();
+        }
     });
     
     // SEND MESSAGE (টেক্সট মেসেজ)
     async function send() {
+        if(!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
         if(!msgInput.value.trim()) return;
         
         const message = {
@@ -69,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI (ইমেজ সহ) - ফাইনাল ফিক্স
+    // ADD MESSAGE TO UI (ইমেজ সহ)
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -91,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 content += `<div style="margin-top:5px; background-color:${isOwn ? '#2563eb' : colors[msg.username] || '#334155'}; color:white; padding:8px 12px; border-radius:14px; display:inline-block; max-width:100%;">${msg.text}</div>`;
             }
         } else {
-            // সাধারণ টেক্সট মেসেজ - পুরো div-এ ব্যাকগ্রাউন্ড থাকবে (CSS মাধ্যমে)
+            // সাধারণ টেক্সট মেসেজ
             content += msg.text;
         }
         
@@ -104,6 +118,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LOAD MESSAGES
     async function loadMessages() {
+        if(!currentUser) return;
+        
         console.log('Loading messages...');
         const { data, error } = await supabase
             .from('messages')
@@ -134,7 +150,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 table: 'messages' 
             }, payload => {
                 console.log('New message received:', payload.new);
-                addMessage(payload.new, payload.new.username === currentUser);
+                if(currentUser) { // শুধু ইউজার সিলেক্ট করলে
+                    addMessage(payload.new, payload.new.username === currentUser);
+                }
             })
             .subscribe((status) => {
                 console.log('Realtime subscription status:', status);
@@ -152,7 +170,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 table: 'statuses' 
             }, payload => {
                 console.log('New status received:', payload.new);
-                if(showingStatus) addStatus(payload.new);
+                if(currentUser && showingStatus) { // শুধু ইউজার সিলেক্ট করলে এবং স্ট্যাটাস ভিউ ওপেন থাকলে
+                    addStatus(payload.new);
+                }
             })
             .subscribe((status) => {
                 console.log('Realtime status subscription:', status);
@@ -161,6 +181,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // HANDLE IMAGE UPLOAD FOR CHAT
     async function handleImageUpload(e) {
+        if(!currentUser) {
+            alert('Please select a user first');
+            imageInput.value = '';
+            return;
+        }
+        
         const file = e.target.files[0];
         if(!file) return;
         
@@ -223,6 +249,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // HANDLE STATUS UPLOAD
     async function handleStatusUpload(e) {
+        if(!currentUser) {
+            alert('Please select a user first');
+            statusInput.value = '';
+            return;
+        }
+        
         const file = e.target.files[0];
         if(!file) return;
         
@@ -310,6 +342,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LOAD STATUSES
     async function loadStatuses() {
+        if(!currentUser) return;
+        
         console.log('Loading statuses...');
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
         const { data, error } = await supabase
@@ -331,6 +365,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // TOGGLE STATUS VIEW
     function toggleStatusView() {
+        if(!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
+        
         showingStatus = !showingStatus;
         if(showingStatus) {
             chatWrap.style.display = "none";
@@ -344,8 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ========== ফাইনাল অনলাইন ইউজার ফাংশন ==========
-    // UPDATE ONLINE USERS - শুধু মাত্র অন্য ইউজার দেখায় যদি সে অনলাইনে থাকে
+    // UPDATE ONLINE USERS - ৩০ সেকেন্ড টাইমিং
     async function updateOnline() {
         if(!currentUser) return;
         
@@ -355,18 +393,18 @@ document.addEventListener('DOMContentLoaded', function() {
             last_seen: new Date().toISOString() 
         });
         
-        // ২ মিনিটের মধ্যে যারা active ছিল তাদের দেখা
-        const twoMinAgo = new Date(Date.now() - 2*60*1000).toISOString();
+        // ৩০ সেকেন্ডের মধ্যে যারা active ছিল তাদের দেখা
+        const thirtySecAgo = new Date(Date.now() - 30*1000).toISOString();
         const { data } = await supabase
             .from('online_users')
             .select('username')
-            .gt('last_seen', twoMinAgo);
+            .gt('last_seen', thirtySecAgo);
         
         if(data) {
             // অন্য ইউজার খুঁজি (নিজেকে বাদ দিয়ে)
             const otherUsers = data
-                .filter(u => u.username !== currentUser) // নিজেকে বাদ
-                .filter(u => u.username === 'eesti' || u.username === 'ralii') // শুধু eesti বা ralii
+                .filter(u => u.username !== currentUser)
+                .filter(u => u.username === 'eesti' || u.username === 'ralii')
                 .map(u => u.username);
             
             // অনলাইন ইউজার দেখাও (শুধু অন্য ইউজার)
@@ -376,10 +414,14 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Other online users:', otherUsers);
         }
     }
-    // ==============================================
     
     // FULL CLEAR (BOTH USERS)
     async function fullClear() {
+        if(!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
+        
         if(confirm('Delete ALL data including statuses?')) {
             await supabase.from('messages').delete().gte('id', 0);
             await supabase.from('statuses').delete().gte('id', 0);
@@ -405,30 +447,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Initialize
+    // Initialize - শুধু রিয়েলটাইম লিসেনার এবং কানেকশন টেস্ট
     async function init() {
         console.log('Initializing app...');
         
         // Test connection first
         await testConnection();
-    
-        await updateOnline();
-        loadMessages();
-        loadStatuses();
+        
+        // রিয়েলটাইম লিসেনার সেটআপ (এখনই মেসেজ শোনা শুরু করবে)
         listenRealtimeMessages();
         listenRealtimeStories();
         
-        // Event listeners for file inputs
-        imageInput.addEventListener("change", handleImageUpload);
-        statusInput.addEventListener("change", handleStatusUpload);
+        // পিরিওডিক ফাংশন
+        setInterval(() => {
+            if(currentUser) updateOnline();
+        }, 30000);
         
-        setInterval(updateOnline, 30000);
         setInterval(async () => {
             const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
             await supabase.from('statuses').delete().lt('time', oneDayAgo);
         }, 60*60*1000);
         
-        console.log('App initialized!');
+        // Event listeners for file inputs
+        imageInput.addEventListener("change", handleImageUpload);
+        statusInput.addEventListener("change", handleStatusUpload);
+        
+        console.log('App initialized! Select a user to start');
     }
     
     init();
