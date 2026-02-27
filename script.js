@@ -344,34 +344,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ========== আপডেটেড অনলাইন ইউজার ফাংশন ==========
-    // UPDATE ONLINE USERS - নিজেকে বাদ দিয়ে অন্য ইউজার দেখায়
+    // ========== ফাইনাল অনলাইন ইউজার ফাংশন ==========
+    // UPDATE ONLINE USERS - শুধু মাত্র valid ইউজার দেখায় যারা আসলেই অনলাইনে আছে
     async function updateOnline() {
         if(!currentUser) return;
         
         // নিজের অনলাইন স্ট্যাটাস আপডেট
-        const { error } = await supabase.from('online_users').upsert({ 
+        await supabase.from('online_users').upsert({ 
             username: currentUser, 
             last_seen: new Date().toISOString() 
         });
         
-        if(error) {
-            console.error('Error updating online status:', error);
-            return;
-        }
-        
-        // ৫ মিনিটের মধ্যে যারা অনলাইন ছিল তাদের দেখা
-        const fiveMinAgo = new Date(Date.now() - 5*60*1000).toISOString();
+        // ২ মিনিটের মধ্যে যারা active ছিল তাদের দেখা (৫ মিনিটের পরিবর্তে)
+        const twoMinAgo = new Date(Date.now() - 2*60*1000).toISOString();
         const { data } = await supabase
             .from('online_users')
             .select('username')
-            .gt('last_seen', fiveMinAgo);
+            .gt('last_seen', twoMinAgo);
         
         if(data) {
-            // নিজেকে বাদ দিয়ে বাকি ইউজার দেখাও
-            const others = data.filter(u => u.username !== currentUser).map(u => u.username);
+            // শুধু মাত্র valid ইউজার যারা আসলেই অনলাইনে আছে
+            const validUsers = data
+                .filter(u => u.username !== currentUser) // নিজেকে বাদ
+                .filter(u => u.username === 'eesti' || u.username === 'ralii') // শুধু eesti বা ralii
+                .map(u => u.username);
+            
+            // অনলাইন ইউজার দেখাও (শুধু valid users)
             onlineUsersEl.style.display = "block";
-            onlineList.innerText = others.join(', ') || 'none';
+            onlineList.innerText = validUsers.join(', ') || 'none';
+            
+            console.log('Online users:', validUsers);
         }
     }
     // ==============================================
