@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI (ইমেজ সহ)
+    // ADD MESSAGE TO UI (ইমেজ সহ) - আপডেটেড ভার্সন
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -79,9 +79,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // যদি ইমেজ থাকে
         if(msg.image_url) {
-            content += `<img src="${msg.image_url}" style="max-width:100%; max-height:300px; border-radius:10px; margin:5px 0; cursor:pointer;" onclick="window.open(this.src)">`;
+            // ইমেজের জন্য আলাদা ডিভ - ব্যাকগ্রাউন্ড ছাড়া
+            content += `<div style="margin:5px 0;">`;
+            content += `<img src="${msg.image_url}" style="width:100%; max-width:320px; max-height:400px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.3); cursor:pointer; display:block;" onclick="window.open(this.src)">`;
+            content += `</div>`;
             if(msg.text) {
-                content += `<br>${msg.text}`;
+                content += `<div style="margin-top:5px; color:white;">${msg.text}</div>`;
             }
         } else {
             // সাধারণ টেক্সট মেসেজ
@@ -276,19 +279,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD STATUS TO UI
+    // ADD STATUS TO UI - আপডেটেড ভার্সন
     function addStatus(status) {
         const div = document.createElement('div');
         div.className = 'status-item';
-        div.innerHTML = `
-            <strong>${status.username}</strong><br>
-            ${status.caption ? status.caption + '<br>' : ''}
-            ${status.media_type === 'image' 
-                ? `<img src="${status.media_url}" class="status-media">` 
-                : `<video src="${status.media_url}" class="status-media" controls></video>`
-            }
-            <div class="time">${new Date(status.time).toLocaleTimeString()}</div>
-        `;
+        div.style.backgroundColor = '#1e293b';
+        div.style.border = `3px solid ${colors[status.username] || '#334155'}`;
+        div.style.padding = '15px';
+        div.style.borderRadius = '20px';
+        
+        let content = `<strong style="color:${colors[status.username] || '#fff'};">${status.username}</strong><br>`;
+        
+        if(status.caption) {
+            content += `<div style="color:white; margin:8px 0;">${status.caption}</div>`;
+        }
+        
+        if(status.media_type === 'image') {
+            content += `<img src="${status.media_url}" style="width:100%; max-width:350px; max-height:450px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.3); margin:5px 0; cursor:pointer;" onclick="window.open(this.src)">`;
+        } else {
+            content += `<video src="${status.media_url}" style="width:100%; max-width:350px; max-height:450px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.3); margin:5px 0;" controls></video>`;
+        }
+        
+        content += `<div class="time">${new Date(status.time).toLocaleTimeString()}</div>`;
+        
+        div.innerHTML = content;
         statusContainer.appendChild(div);
         statusContainer.scrollTop = statusContainer.scrollHeight;
     }
