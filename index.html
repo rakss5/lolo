@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lolo Chat 3 - Login</title>
+<title>Lolo Chat - Eesti & Ralii</title>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -14,9 +14,8 @@ body{background:#0f172a;font-family:Arial,sans-serif;display:flex;justify-conten
 #userSelect select{background:#1e293b;color:white;border:none;padding:4px;border-radius:4px;}
 #onlineUsers{color:white;font-size:14px;display:none}
 button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer;margin-left:4px;}
-#logoutBtn{background:#ef4444;display:inline-block}
-#clearBtn{background:#f97316;display:none}
-#fullClearBtn{background:#dc2626;display:none}
+#clearBtn{background:#f97316;display:inline-block}
+#fullClearBtn{background:#dc2626;display:inline-block}
 #statusBtn{background:#8b5cf6;display:inline-block}
 #chatWrap,#statusArea{flex:1;min-height:0;display:flex}
 #chatContainer,#statusContainer{flex:1;overflow-y:auto;background:#1e293b;padding:10px;display:flex;flex-direction:column;}
@@ -28,10 +27,11 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 .time{font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;}
 #input-area{position:sticky;bottom:0;background:#020617;padding:8px;display:flex;gap:6px;flex-wrap:wrap;}
 #msg{flex:1;padding:12px;border-radius:20px;border:none;outline:none;min-width:120px;}
-.sendBtn,.statusBtn{width:42px;height:42px;border-radius:50%;border:none;background:#fff;font-size:20px;flex-shrink:0;color:#000;}
-#mediaInput{display:none;}
-#mediaBtn{background:#10b981;color:white;font-size:20px;line-height:1;}
-#loginForm{display:none;}
+.sendBtn,.statusBtn,.imageBtn{width:42px;height:42px;border-radius:50%;border:none;background:#fff;font-size:20px;flex-shrink:0;color:#000;}
+#imageInput{display:none;}
+#imageBtn{background:#10b981;color:white;font-size:20px;line-height:1;}
+#statusInput{display:none;}
+#statusBtn2{background:#8b5cf6;color:white;font-size:20px;line-height:1;}
 </style>
 </head>
 <body>
@@ -41,16 +41,11 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
       <span style="color:white;">User:</span>
       <select id="userDropdown">
         <option value="eesti">eesti</option>
-        <option value="radu">radu</option>
-        <option value="ali">ali</option>
         <option value="ralii">ralii</option>
-        <option value="bluee">bluee</option>
-        <option value="blueee">blueee</option>
       </select>
     </div>
     <div id="onlineUsers">Online: <span id="onlineList"></span></div>
     <div>
-      <button id="statusBtn">Status</button>
       <button id="clearBtn">CL</button>
       <button id="fullClearBtn">FULLCL</button>
     </div>
@@ -65,11 +60,14 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
   </div>
 
   <div id="input-area">
-    <input id="msg" placeholder="Type message or caption">
+    <input id="msg" placeholder="Type message">
     <button class="sendBtn" id="sendBtn">📤</button>
-    <!-- ইমেজ আপলোডের জন্য আলাদা বাটন -->
-    <label for="mediaInput"><button class="statusBtn" id="mediaBtn">📷</button></label>
-    <input type="file" id="mediaInput" accept="image/*">
+    <!-- ইমেজ পাঠানোর বাটন -->
+    <label for="imageInput"><button class="imageBtn" id="imageBtn">📷</button></label>
+    <input type="file" id="imageInput" accept="image/*">
+    <!-- স্ট্যাটাস আপলোডের বাটন -->
+    <label for="statusInput"><button class="statusBtn" id="statusBtn2">📋</button></label>
+    <input type="file" id="statusInput" accept="image/*,video/*">
   </div>
 </div>
 
