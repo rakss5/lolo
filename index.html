@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lolo Chat - Login</title>
+<title>Lolo Login</title>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -33,30 +33,39 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
     color: white;
     text-align: center;
     margin-bottom: 20px;
+    font-size: 24px;
 }
 
 #loginForm input {
-    padding: 12px;
+    padding: 14px;
     margin: 8px 0;
-    border-radius: 8px;
+    border-radius: 10px;
     border: none;
     background: #1e293b;
     color: white;
+    font-size: 16px;
 }
 
 #loginForm input::placeholder {
     color: #94a3b8;
 }
 
+#loginForm input:focus {
+    outline: 2px solid #3b82f6;
+    background: #2d3a4f;
+}
+
 #loginForm button {
-    padding: 12px;
+    padding: 14px;
     margin-top: 20px;
     background: #3b82f6;
     color: white;
     font-weight: bold;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
+    font-size: 16px;
+    transition: background 0.2s;
 }
 
 #loginForm button:hover {
@@ -68,6 +77,12 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
     text-align: center;
     margin-top: 10px;
     font-size: 14px;
+}
+
+/* ইউজার ইনফো */
+#currentUsername {
+    font-weight: bold;
+    font-size: 16px;
 }
 
 /* মেসেজ স্টাইল */
@@ -195,7 +210,7 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 
   <!-- লগইন ফর্ম -->
   <div id="loginForm">
-    <h3>Lolo Chat Login</h3>
+    <h3>Lolo Chat</h3>
     <input type="text" id="loginUsername" placeholder="Username">
     <input type="password" id="loginPassword" placeholder="Password">
     <button id="loginBtn">Login</button>
