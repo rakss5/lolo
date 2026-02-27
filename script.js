@@ -42,17 +42,21 @@ document.addEventListener('DOMContentLoaded', function() {
     msgInput.addEventListener("keydown", e => e.key === "Enter" && send());
     
     // ইউজার সিলেক্ট করার পর
-    userDropdown.addEventListener("change", (e) => {
+    userDropdown.addEventListener("change", async (e) => {
         if(e.target.value) {
             currentUser = e.target.value;
             console.log('User selected:', currentUser);
             
-            // মেসেজ লোড এবং অনলাইন আপডেট
-            loadMessages();
-            updateOnline();
+            // নিজের অনলাইন স্ট্যাটাস আপডেট
+            await supabase.from('online_users').upsert({ 
+                username: currentUser, 
+                last_seen: new Date().toISOString() 
+            });
             
-            // স্ট্যাটাস লোড
+            // মেসেজ লোড এবং অনলাইন চেক
+            loadMessages();
             loadStatuses();
+            checkOnlineUsers();
         }
     });
     
@@ -150,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 table: 'messages' 
             }, payload => {
                 console.log('New message received:', payload.new);
-                if(currentUser) { // শুধু ইউজার সিলেক্ট করলে
+                if(currentUser) {
                     addMessage(payload.new, payload.new.username === currentUser);
                 }
             })
@@ -170,13 +174,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 table: 'statuses' 
             }, payload => {
                 console.log('New status received:', payload.new);
-                if(currentUser && showingStatus) { // শুধু ইউজার সিলেক্ট করলে এবং স্ট্যাটাস ভিউ ওপেন থাকলে
+                if(currentUser && showingStatus) {
                     addStatus(payload.new);
                 }
             })
             .subscribe((status) => {
                 console.log('Realtime status subscription:', status);
             });
+    }
+    
+    // LISTEN ONLINE USERS - রিয়েলটাইম অনলাইন স্ট্যাটাস
+    function listenOnlineUsers() {
+        console.log('Setting up realtime online users listener...');
+        supabase
+            .channel('online-users-channel')
+            .on('postgres_changes', { 
+                event: '*', // INSERT, UPDATE, DELETE সব ইভেন্ট
+                schema: 'public', 
+                table: 'online_users' 
+            }, () => {
+                console.log('Online users changed, checking...');
+                if(currentUser) {
+                    checkOnlineUsers();
+                }
+            })
+            .subscribe((status) => {
+                console.log('Online users subscription status:', status);
+            });
+    }
+    
+    // CHECK ONLINE USERS - ইনস্ট্যান্ট চেক
+    async function checkOnlineUsers() {
+        if(!currentUser) return;
+        
+        // ১০ সেকেন্ডের মধ্যে যারা active ছিল তাদের দেখা
+        const tenSecAgo = new Date(Date.now() - 10*1000).toISOString();
+        const { data } = await supabase
+            .from('online_users')
+            .select('username')
+            .gt('last_seen', tenSecAgo);
+        
+        if(data) {
+            // অন্য ইউজার খুঁজি (নিজেকে বাদ দিয়ে)
+            const otherUsers = data
+                .filter(u => u.username !== currentUser)
+                .filter(u => u.username === 'eesti' || u.username === 'ralii')
+                .map(u => u.username);
+            
+            // অনলাইন ইউজার দেখাও (শুধু অন্য ইউজার)
+            onlineUsersEl.style.display = "block";
+            onlineList.innerText = otherUsers.length > 0 ? otherUsers.join(', ') : 'none';
+            
+            console.log('Other online users:', otherUsers);
+        }
     }
     
     // HANDLE IMAGE UPLOAD FOR CHAT
@@ -383,38 +433,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // UPDATE ONLINE USERS - ৩০ সেকেন্ড টাইমিং
-    async function updateOnline() {
-        if(!currentUser) return;
-        
-        // নিজের অনলাইন স্ট্যাটাস আপডেট
-        await supabase.from('online_users').upsert({ 
-            username: currentUser, 
-            last_seen: new Date().toISOString() 
-        });
-        
-        // ৩০ সেকেন্ডের মধ্যে যারা active ছিল তাদের দেখা
-        const thirtySecAgo = new Date(Date.now() - 30*1000).toISOString();
-        const { data } = await supabase
-            .from('online_users')
-            .select('username')
-            .gt('last_seen', thirtySecAgo);
-        
-        if(data) {
-            // অন্য ইউজার খুঁজি (নিজেকে বাদ দিয়ে)
-            const otherUsers = data
-                .filter(u => u.username !== currentUser)
-                .filter(u => u.username === 'eesti' || u.username === 'ralii')
-                .map(u => u.username);
-            
-            // অনলাইন ইউজার দেখাও (শুধু অন্য ইউজার)
-            onlineUsersEl.style.display = "block";
-            onlineList.innerText = otherUsers.length > 0 ? otherUsers.join(', ') : 'none';
-            
-            console.log('Other online users:', otherUsers);
-        }
-    }
-    
     // FULL CLEAR (BOTH USERS)
     async function fullClear() {
         if(!currentUser) {
@@ -447,30 +465,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Initialize - শুধু রিয়েলটাইম লিসেনার এবং কানেকশন টেস্ট
+    // Initialize
     async function init() {
         console.log('Initializing app...');
         
         // Test connection first
         await testConnection();
         
-        // রিয়েলটাইম লিসেনার সেটআপ (এখনই মেসেজ শোনা শুরু করবে)
+        // রিয়েলটাইম লিসেনার সেটআপ
         listenRealtimeMessages();
         listenRealtimeStories();
-        
-        // পিরিওডিক ফাংশন
-        setInterval(() => {
-            if(currentUser) updateOnline();
-        }, 30000);
-        
-        setInterval(async () => {
-            const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
-            await supabase.from('statuses').delete().lt('time', oneDayAgo);
-        }, 60*60*1000);
+        listenOnlineUsers(); // অনলাইন ইউজার রিয়েলটাইম লিসেনার
         
         // Event listeners for file inputs
         imageInput.addEventListener("change", handleImageUpload);
         statusInput.addEventListener("change", handleStatusUpload);
+        
+        // স্ট্যাটাস ক্লিনআপ (দিনে একবার)
+        setInterval(async () => {
+            const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
+            await supabase.from('statuses').delete().lt('time', oneDayAgo);
+        }, 60*60*1000);
         
         console.log('App initialized! Select a user to start');
     }
