@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // ========== ফাইনাল অনলাইন ইউজার ফাংশন ==========
-    // UPDATE ONLINE USERS - শুধু মাত্র valid ইউজার দেখায় যারা আসলেই অনলাইনে আছে
+    // UPDATE ONLINE USERS - শুধু মাত্র অন্য ইউজার দেখায় যদি সে অনলাইনে থাকে
     async function updateOnline() {
         if(!currentUser) return;
         
@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
             last_seen: new Date().toISOString() 
         });
         
-        // ২ মিনিটের মধ্যে যারা active ছিল তাদের দেখা (৫ মিনিটের পরিবর্তে)
+        // ২ মিনিটের মধ্যে যারা active ছিল তাদের দেখা
         const twoMinAgo = new Date(Date.now() - 2*60*1000).toISOString();
         const { data } = await supabase
             .from('online_users')
@@ -363,17 +363,17 @@ document.addEventListener('DOMContentLoaded', function() {
             .gt('last_seen', twoMinAgo);
         
         if(data) {
-            // শুধু মাত্র valid ইউজার যারা আসলেই অনলাইনে আছে
-            const validUsers = data
+            // অন্য ইউজার খুঁজি (নিজেকে বাদ দিয়ে)
+            const otherUsers = data
                 .filter(u => u.username !== currentUser) // নিজেকে বাদ
                 .filter(u => u.username === 'eesti' || u.username === 'ralii') // শুধু eesti বা ralii
                 .map(u => u.username);
             
-            // অনলাইন ইউজার দেখাও (শুধু valid users)
+            // অনলাইন ইউজার দেখাও (শুধু অন্য ইউজার)
             onlineUsersEl.style.display = "block";
-            onlineList.innerText = validUsers.join(', ') || 'none';
+            onlineList.innerText = otherUsers.length > 0 ? otherUsers.join(', ') : 'none';
             
-            console.log('Online users:', validUsers);
+            console.log('Other online users:', otherUsers);
         }
     }
     // ==============================================
