@@ -13,9 +13,6 @@ document.addEventListener('DOMContentLoaded', function() {
         ralii: "#619efa"
     };
     
-    // Admin users - both have same permissions
-    const adminUsers = ["eesti", "ralii"];
-    
     let currentUser = "eesti";
     let showingStatus = false;
     
@@ -26,21 +23,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatContainer = document.getElementById("chatContainer");
     const statusArea = document.getElementById("statusArea");
     const statusContainer = document.getElementById("statusContainer");
-    const clearBtn = document.getElementById("clearBtn");
     const fullClearBtn = document.getElementById("fullClearBtn");
+    const statusViewBtn = document.getElementById("statusViewBtn");
     const onlineUsersEl = document.getElementById("onlineUsers");
     const onlineList = document.getElementById("onlineList");
     const imageInput = document.getElementById("imageInput");
     const statusInput = document.getElementById("statusInput");
     const sendBtn = document.getElementById("sendBtn");
     const imageBtn = document.getElementById("imageBtn");
-    const statusBtn2 = document.getElementById("statusBtn2");
+    const statusUploadBtn = document.getElementById("statusUploadBtn");
     
     // Event Listeners
     sendBtn.addEventListener("click", send);
     imageBtn.addEventListener("click", () => imageInput.click());
-    statusBtn2.addEventListener("click", () => statusInput.click());
-    clearBtn.addEventListener("click", clearAll);
+    statusUploadBtn.addEventListener("click", () => statusInput.click());
+    statusViewBtn.addEventListener("click", toggleStatusView);
     fullClearBtn.addEventListener("click", fullClear);
     msgInput.addEventListener("keydown", e => e.key === "Enter" && send());
     userDropdown.addEventListener("change", (e) => {
@@ -323,10 +320,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if(showingStatus) {
             chatWrap.style.display = "none";
             statusArea.style.display = "flex";
+            statusViewBtn.style.background = "#f97316";
             loadStatuses();
         } else {
             chatWrap.style.display = "flex";
             statusArea.style.display = "none";
+            statusViewBtn.style.background = "#8b5cf6";
         }
     }
     
@@ -353,17 +352,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if(data) {
             onlineUsersEl.style.display = "block";
             onlineList.innerText = data.map(u => u.username).join(', ') || 'none';
-        }
-    }
-    
-    // CLEAR ALL MESSAGES (BOTH USERS)
-    async function clearAll() {
-        if(confirm('Clear all messages?')) {
-            const { error } = await supabase.from('messages').delete().gte('id', 0);
-            if(!error) {
-                chatContainer.innerHTML = '';
-                alert('All messages cleared!');
-            }
         }
     }
     
