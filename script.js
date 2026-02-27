@@ -344,10 +344,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // UPDATE ONLINE USERS
+    // ========== আপডেটেড অনলাইন ইউজার ফাংশন ==========
+    // UPDATE ONLINE USERS - নিজেকে বাদ দিয়ে অন্য ইউজার দেখায়
     async function updateOnline() {
         if(!currentUser) return;
         
+        // নিজের অনলাইন স্ট্যাটাস আপডেট
         const { error } = await supabase.from('online_users').upsert({ 
             username: currentUser, 
             last_seen: new Date().toISOString() 
@@ -358,6 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // ৫ মিনিটের মধ্যে যারা অনলাইন ছিল তাদের দেখা
         const fiveMinAgo = new Date(Date.now() - 5*60*1000).toISOString();
         const { data } = await supabase
             .from('online_users')
@@ -365,10 +368,13 @@ document.addEventListener('DOMContentLoaded', function() {
             .gt('last_seen', fiveMinAgo);
         
         if(data) {
+            // নিজেকে বাদ দিয়ে বাকি ইউজার দেখাও
+            const others = data.filter(u => u.username !== currentUser).map(u => u.username);
             onlineUsersEl.style.display = "block";
-            onlineList.innerText = data.map(u => u.username).join(', ') || 'none';
+            onlineList.innerText = others.join(', ') || 'none';
         }
     }
+    // ==============================================
     
     // FULL CLEAR (BOTH USERS)
     async function fullClear() {
