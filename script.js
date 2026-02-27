@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
         blueee: "#f7bad8"
     };
     
+    // Admin users - eesti and ralii both have same permissions
+    const adminUsers = ["eesti", "ralii"];
+    
     let currentUser = "eesti";
     let showingStatus = false;
     
@@ -49,7 +52,8 @@ document.addEventListener('DOMContentLoaded', function() {
         loadMessages();
         updateOnline();
         
-        if(currentUser === "eesti") {
+        // Show clear buttons for both eesti and ralii
+        if(adminUsers.includes(currentUser)) {
             clearBtn.style.display = "inline-block";
             fullClearBtn.style.display = "inline-block";
         } else {
@@ -58,15 +62,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // SEND MESSAGE
+    // SEND MESSAGE (টেক্সট মেসেজ)
     async function send() {
         if(!msgInput.value.trim()) return;
         
         const message = {
             username: currentUser,
             text: msgInput.value.trim(),
-            time: new Date().toISOString(),
-            // type: 'message'  // এই লাইনটা কমেন্ট করে দিন বা মুছে দিন
+            time: new Date().toISOString()
         };
         
         console.log('Sending message:', message);
@@ -82,16 +85,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI
+    // ADD MESSAGE TO UI (ইমেজ সহ)
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
         div.style.backgroundColor = isOwn ? '#2563eb' : colors[msg.username] || '#334155';
-        div.innerHTML = `
-            <strong>${msg.username}</strong><br>
-            ${msg.text}
-            <div class="time">${new Date(msg.time).toLocaleTimeString()}</div>
-        `;
+        
+        let content = `<strong>${msg.username}</strong><br>`;
+        
+        // যদি ইমেজ থাকে
+        if(msg.image_url) {
+            content += `<img src="${msg.image_url}" style="max-width:100%; max-height:300px; border-radius:10px; margin:5px 0; cursor:pointer;" onclick="window.open(this.src)">`;
+            if(msg.text) {
+                content += `<br>${msg.text}`;
+            }
+        } else {
+            // সাধারণ টেক্সট মেসেজ
+            content += msg.text;
+        }
+        
+        content += `<div class="time">${new Date(msg.time).toLocaleTimeString()}</div>`;
+        
+        div.innerHTML = content;
         chatContainer.appendChild(div);
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
@@ -153,17 +168,25 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    // HANDLE MEDIA UPLOAD
+    // HANDLE MEDIA UPLOAD - ইমেজ আপলোড ও মেসেজ হিসেবে পাঠানো
     async function handleMediaUpload(e) {
         const file = e.target.files[0];
         if(!file) return;
         
-        console.log('Uploading file:', file.name);
+        // শুধু ইমেজ ফাইল অনুমোদিত
+        if(!file.type.startsWith('image/')) {
+            alert('Please select an image file only');
+            mediaInput.value = '';
+            return;
+        }
+        
+        console.log('Uploading image:', file.name);
         
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
         const filePath = `${currentUser}/${fileName}`;
         
+        // ইমেজ আপলোড
         const { error: uploadError } = await supabase.storage
             .from('media')
             .upload(filePath, file);
@@ -171,36 +194,39 @@ document.addEventListener('DOMContentLoaded', function() {
         if(uploadError) {
             console.error('Upload error:', uploadError);
             alert('Upload failed: ' + uploadError.message);
+            mediaInput.value = '';
             return;
         }
         
+        // পাবলিক URL পাওয়া
         const { data: { publicUrl } } = supabase.storage
             .from('media')
             .getPublicUrl(filePath);
         
-        console.log('File uploaded, public URL:', publicUrl);
+        console.log('Image uploaded, URL:', publicUrl);
         
-        const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
+        // ক্যাপশন নেওয়া
+        const caption = msgInput.value.trim() || '';
         
-        const status = {
+        // মেসেজ হিসেবে ইমেজ পাঠানো
+        const message = {
             username: currentUser,
-            media_url: publicUrl,
-            media_type: mediaType,
-            caption: msgInput.value.trim() || '',
+            text: caption,
+            image_url: publicUrl,  // ইমেজ URL সংরক্ষণ
             time: new Date().toISOString()
         };
         
-        console.log('Adding status:', status);
+        console.log('Sending image message:', message);
         
-        const { error } = await supabase.from('statuses').insert([status]);
+        const { error } = await supabase.from('messages').insert([message]);
         
         if(error) {
-            console.error('Error adding status:', error);
-            alert('Error adding status: ' + error.message);
+            console.error('Error sending image message:', error);
+            alert('Error: ' + error.message);
         } else {
+            console.log('Image message sent successfully');
             msgInput.value = '';
             mediaInput.value = '';
-            alert('Status uploaded successfully!');
         }
     }
     
@@ -283,10 +309,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // CLEAR ALL MESSAGES (EESTI ONLY)
+    // CLEAR ALL MESSAGES (EESTI AND RALII ONLY)
     async function clearAll() {
-        if(currentUser !== 'eesti') {
-            alert('Only eesti can clear messages');
+        if(!adminUsers.includes(currentUser)) {
+            alert('Only eesti and ralii can clear messages');
             return;
         }
         if(confirm('Clear all messages?')) {
@@ -298,10 +324,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // FULL CLEAR (EESTI ONLY)
+    // FULL CLEAR (EESTI AND RALII ONLY)
     async function fullClear() {
-        if(currentUser !== 'eesti') {
-            alert('Only eesti can clear all data');
+        if(!adminUsers.includes(currentUser)) {
+            alert('Only eesti and ralii can clear all data');
             return;
         }
         if(confirm('Delete ALL data including statuses?')) {
@@ -326,7 +352,6 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Connection failed: ' + error.message);
         } else {
             console.log('Connection successful!');
-            alert('Supabase connected successfully!');
         }
     }
     
@@ -337,7 +362,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Test connection first
         await testConnection();
         
-        if(currentUser === "eesti") {
+        // Show clear buttons for both eesti and ralii
+        if(adminUsers.includes(currentUser)) {
             clearBtn.style.display = "inline-block";
             fullClearBtn.style.display = "inline-block";
         }
