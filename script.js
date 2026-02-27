@@ -7,18 +7,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize Supabase
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    // USERS & COLORS
-    const users = ["eesti", "radu", "ali", "ralii", "bluee", "blueee"];
+    // USERS & COLORS - শুধু eesti এবং ralii
     const colors = {
         eesti: "#22c55e",
-        radu: "#22c55e",
-        ali: "#00f2ea",
-        ralii: "#619efa",
-        bluee: "#3b82f6",
-        blueee: "#f7bad8"
+        ralii: "#619efa"
     };
     
-    // Admin users - eesti and ralii both have same permissions
+    // Admin users - both have same permissions
     const adminUsers = ["eesti", "ralii"];
     
     let currentUser = "eesti";
@@ -33,17 +28,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusContainer = document.getElementById("statusContainer");
     const clearBtn = document.getElementById("clearBtn");
     const fullClearBtn = document.getElementById("fullClearBtn");
-    const statusBtn = document.getElementById("statusBtn");
     const onlineUsersEl = document.getElementById("onlineUsers");
     const onlineList = document.getElementById("onlineList");
-    const mediaInput = document.getElementById("mediaInput");
+    const imageInput = document.getElementById("imageInput");
+    const statusInput = document.getElementById("statusInput");
     const sendBtn = document.getElementById("sendBtn");
-    const mediaBtn = document.getElementById("mediaBtn");
+    const imageBtn = document.getElementById("imageBtn");
+    const statusBtn2 = document.getElementById("statusBtn2");
     
     // Event Listeners
     sendBtn.addEventListener("click", send);
-    mediaBtn.addEventListener("click", () => mediaInput.click());
-    statusBtn.addEventListener("click", toggleStatusView);
+    imageBtn.addEventListener("click", () => imageInput.click());
+    statusBtn2.addEventListener("click", () => statusInput.click());
     clearBtn.addEventListener("click", clearAll);
     fullClearBtn.addEventListener("click", fullClear);
     msgInput.addEventListener("keydown", e => e.key === "Enter" && send());
@@ -51,15 +47,6 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUser = e.target.value;
         loadMessages();
         updateOnline();
-        
-        // Show clear buttons for both eesti and ralii
-        if(adminUsers.includes(currentUser)) {
-            clearBtn.style.display = "inline-block";
-            fullClearBtn.style.display = "inline-block";
-        } else {
-            clearBtn.style.display = "none";
-            fullClearBtn.style.display = "none";
-        }
     });
     
     // SEND MESSAGE (টেক্সট মেসেজ)
@@ -168,22 +155,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    // HANDLE MEDIA UPLOAD - ইমেজ আপলোড ও মেসেজ হিসেবে পাঠানো
-    async function handleMediaUpload(e) {
+    // HANDLE IMAGE UPLOAD FOR CHAT
+    async function handleImageUpload(e) {
         const file = e.target.files[0];
         if(!file) return;
         
         // শুধু ইমেজ ফাইল অনুমোদিত
         if(!file.type.startsWith('image/')) {
             alert('Please select an image file only');
-            mediaInput.value = '';
+            imageInput.value = '';
             return;
         }
         
-        console.log('Uploading image:', file.name);
+        console.log('Uploading image for chat:', file.name);
         
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
+        const fileName = `chat_${Date.now()}.${fileExt}`;
         const filePath = `${currentUser}/${fileName}`;
         
         // ইমেজ আপলোড
@@ -194,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if(uploadError) {
             console.error('Upload error:', uploadError);
             alert('Upload failed: ' + uploadError.message);
-            mediaInput.value = '';
+            imageInput.value = '';
             return;
         }
         
@@ -212,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const message = {
             username: currentUser,
             text: caption,
-            image_url: publicUrl,  // ইমেজ URL সংরক্ষণ
+            image_url: publicUrl,
             time: new Date().toISOString()
         };
         
@@ -226,7 +213,69 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             console.log('Image message sent successfully');
             msgInput.value = '';
-            mediaInput.value = '';
+            imageInput.value = '';
+        }
+    }
+    
+    // HANDLE STATUS UPLOAD
+    async function handleStatusUpload(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        
+        console.log('Uploading status:', file.name);
+        
+        const fileExt = file.name.split('.').pop();
+        const fileName = `status_${Date.now()}.${fileExt}`;
+        const filePath = `${currentUser}/${fileName}`;
+        
+        // ফাইল আপলোড
+        const { error: uploadError } = await supabase.storage
+            .from('media')
+            .upload(filePath, file);
+            
+        if(uploadError) {
+            console.error('Upload error:', uploadError);
+            alert('Upload failed: ' + uploadError.message);
+            statusInput.value = '';
+            return;
+        }
+        
+        // পাবলিক URL পাওয়া
+        const { data: { publicUrl } } = supabase.storage
+            .from('media')
+            .getPublicUrl(filePath);
+        
+        console.log('Status uploaded, URL:', publicUrl);
+        
+        const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
+        
+        // ক্যাপশন নেওয়া
+        const caption = msgInput.value.trim() || '';
+        
+        const status = {
+            username: currentUser,
+            media_url: publicUrl,
+            media_type: mediaType,
+            caption: caption,
+            time: new Date().toISOString()
+        };
+        
+        console.log('Adding status:', status);
+        
+        const { error } = await supabase.from('statuses').insert([status]);
+        
+        if(error) {
+            console.error('Error adding status:', error);
+            alert('Error adding status: ' + error.message);
+        } else {
+            msgInput.value = '';
+            statusInput.value = '';
+            alert('Status uploaded successfully!');
+            
+            // যদি স্ট্যাটাস ভিউ ওপেন থাকে, তাহলে দেখাবে
+            if(showingStatus) {
+                addStatus(status);
+            }
         }
     }
     
@@ -274,12 +323,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if(showingStatus) {
             chatWrap.style.display = "none";
             statusArea.style.display = "flex";
-            statusBtn.style.background = "#f97316";
             loadStatuses();
         } else {
             chatWrap.style.display = "flex";
             statusArea.style.display = "none";
-            statusBtn.style.background = "#8b5cf6";
         }
     }
     
@@ -309,12 +356,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // CLEAR ALL MESSAGES (EESTI AND RALII ONLY)
+    // CLEAR ALL MESSAGES (BOTH USERS)
     async function clearAll() {
-        if(!adminUsers.includes(currentUser)) {
-            alert('Only eesti and ralii can clear messages');
-            return;
-        }
         if(confirm('Clear all messages?')) {
             const { error } = await supabase.from('messages').delete().gte('id', 0);
             if(!error) {
@@ -324,12 +367,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // FULL CLEAR (EESTI AND RALII ONLY)
+    // FULL CLEAR (BOTH USERS)
     async function fullClear() {
-        if(!adminUsers.includes(currentUser)) {
-            alert('Only eesti and ralii can clear all data');
-            return;
-        }
         if(confirm('Delete ALL data including statuses?')) {
             await supabase.from('messages').delete().gte('id', 0);
             await supabase.from('statuses').delete().gte('id', 0);
@@ -361,19 +400,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Test connection first
         await testConnection();
-        
-        // Show clear buttons for both eesti and ralii
-        if(adminUsers.includes(currentUser)) {
-            clearBtn.style.display = "inline-block";
-            fullClearBtn.style.display = "inline-block";
-        }
     
         await updateOnline();
         loadMessages();
         loadStatuses();
         listenRealtimeMessages();
         listenRealtimeStories();
-        mediaInput.addEventListener("change", handleMediaUpload);
+        
+        // Event listeners for file inputs
+        imageInput.addEventListener("change", handleImageUpload);
+        statusInput.addEventListener("change", handleStatusUpload);
         
         setInterval(updateOnline, 30000);
         setInterval(async () => {
