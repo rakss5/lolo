@@ -7,31 +7,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize Supabase
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    // ইউজার ক্রেডেনশিয়াল - সিম্পল পাসওয়ার্ড
-    const users = {
-        eesti: "aa",
-        ralii: "bb"
-    };
-    
-    // ইউজার কালার
+    // USERS & COLORS - শুধু eesti এবং ralii
     const colors = {
         eesti: "#22c55e",
         ralii: "#619efa"
     };
     
-    let currentUser = null;
+    let currentUser = "eesti";
     let showingStatus = false;
     
     // DOM Elements
-    const loginForm = document.getElementById("loginForm");
-    const loginUsername = document.getElementById("loginUsername");
-    const loginPassword = document.getElementById("loginPassword");
-    const loginBtn = document.getElementById("loginBtn");
-    const loginError = document.getElementById("loginError");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const userInfo = document.getElementById("userInfo");
-    const currentUsername = document.getElementById("currentUsername");
-    
+    const userDropdown = document.getElementById("userDropdown");
     const msgInput = document.getElementById("msg");
     const chatWrap = document.getElementById("chatWrap");
     const chatContainer = document.getElementById("chatContainer");
@@ -47,70 +33,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageBtn = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
     
-    // লগইন ফাংশন
-    loginBtn.addEventListener("click", login);
-    loginPassword.addEventListener("keydown", (e) => e.key === "Enter" && login());
-    loginUsername.addEventListener("keydown", (e) => e.key === "Enter" && login());
-    
-    function login() {
-        const username = loginUsername.value.trim();
-        const password = loginPassword.value.trim();
-        
-        console.log('Login attempt:', username, password);
-        
-        // চেক করা ইউজার আছে কিনা
-        if(users[username] && users[username] === password) {
-            currentUser = username;
-            console.log('Login successful:', currentUser);
-            
-            // লগইন ফর্ম লুকাও
-            loginForm.style.display = "none";
-            
-            // চ্যাট দেখাও
-            chatWrap.style.display = "flex";
-            document.getElementById("input-area").style.display = "flex";
-            userInfo.style.display = "flex";
-            onlineUsersEl.style.display = "block";
-            logoutBtn.style.display = "inline-block";
-            
-            // ইউজার নাম দেখাও
-            currentUsername.textContent = currentUser;
-            currentUsername.style.color = colors[currentUser];
-            
-            // FULLCL বাটন সবার জন্য দেখাও
-            fullClearBtn.style.display = "inline-block";
-            
-            // ইনিশিয়ালাইজ
-            init();
-        } else {
-            console.log('Login failed');
-            loginError.textContent = "Invalid username or password";
-        }
-    }
-    
-    // লগআউট ফাংশন
-    logoutBtn.addEventListener("click", logout);
-    
-    function logout() {
-        currentUser = null;
-        
-        // চ্যাট লুকাও
-        chatWrap.style.display = "none";
-        statusArea.style.display = "none";
-        document.getElementById("input-area").style.display = "none";
-        userInfo.style.display = "none";
-        onlineUsersEl.style.display = "none";
-        
-        // লগইন ফর্ম দেখাও
-        loginForm.style.display = "flex";
-        loginUsername.value = "";
-        loginPassword.value = "";
-        loginError.textContent = "";
-    }
+    // Event Listeners
+    sendBtn.addEventListener("click", send);
+    imageBtn.addEventListener("click", () => imageInput.click());
+    statusUploadBtn.addEventListener("click", () => statusInput.click());
+    statusViewBtn.addEventListener("click", toggleStatusView);
+    fullClearBtn.addEventListener("click", fullClear);
+    msgInput.addEventListener("keydown", e => e.key === "Enter" && send());
+    userDropdown.addEventListener("change", (e) => {
+        currentUser = e.target.value;
+        loadMessages();
+        updateOnline();
+    });
     
     // SEND MESSAGE (টেক্সট মেসেজ)
     async function send() {
-        if(!currentUser || !msgInput.value.trim()) return;
+        if(!msgInput.value.trim()) return;
         
         const message = {
             username: currentUser,
@@ -131,14 +69,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI (ইমেজ সহ)
+    // ADD MESSAGE TO UI (ইমেজ সহ) - ফাইনাল ফিক্স
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
         
         let content = '';
         
-        // ইউজারনেম দেখান
+        // ইউজারনেম দেখান (ইমেজ থাকলেও দেখাবে)
         content += `<strong style="color:${colors[msg.username] || '#fff'};">${msg.username}</strong><br>`;
         
         // যদি ইমেজ থাকে
@@ -153,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 content += `<div style="margin-top:5px; background-color:${isOwn ? '#2563eb' : colors[msg.username] || '#334155'}; color:white; padding:8px 12px; border-radius:14px; display:inline-block; max-width:100%;">${msg.text}</div>`;
             }
         } else {
-            // সাধারণ টেক্সট মেসেজ
+            // সাধারণ টেক্সট মেসেজ - পুরো div-এ ব্যাকগ্রাউন্ড থাকবে (CSS মাধ্যমে)
             content += msg.text;
         }
         
@@ -166,8 +104,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LOAD MESSAGES
     async function loadMessages() {
-        if(!currentUser) return;
-        
         console.log('Loading messages...');
         const { data, error } = await supabase
             .from('messages')
@@ -189,8 +125,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LISTEN REALTIME MESSAGES
     function listenRealtimeMessages() {
-        if(!currentUser) return;
-        
         console.log('Setting up realtime messages listener...');
         supabase
             .channel('messages-channel')
@@ -209,8 +143,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LISTEN REALTIME STORIES
     function listenRealtimeStories() {
-        if(!currentUser) return;
-        
         console.log('Setting up realtime statuses listener...');
         supabase
             .channel('statuses-channel')
@@ -229,8 +161,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // HANDLE IMAGE UPLOAD FOR CHAT
     async function handleImageUpload(e) {
-        if(!currentUser) return;
-        
         const file = e.target.files[0];
         if(!file) return;
         
@@ -293,8 +223,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // HANDLE STATUS UPLOAD
     async function handleStatusUpload(e) {
-        if(!currentUser) return;
-        
         const file = e.target.files[0];
         if(!file) return;
         
@@ -382,8 +310,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // LOAD STATUSES
     async function loadStatuses() {
-        if(!currentUser) return;
-        
         console.log('Loading statuses...');
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
         const { data, error } = await supabase
@@ -405,8 +331,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // TOGGLE STATUS VIEW
     function toggleStatusView() {
-        if(!currentUser) return;
-        
         showingStatus = !showingStatus;
         if(showingStatus) {
             chatWrap.style.display = "none";
@@ -448,8 +372,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // FULL CLEAR (BOTH USERS)
     async function fullClear() {
-        if(!currentUser) return;
-        
         if(confirm('Delete ALL data including statuses?')) {
             await supabase.from('messages').delete().gte('id', 0);
             await supabase.from('statuses').delete().gte('id', 0);
@@ -477,9 +399,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize
     async function init() {
-        console.log('Initializing app for:', currentUser);
+        console.log('Initializing app...');
         
+        // Test connection first
         await testConnection();
+    
         await updateOnline();
         loadMessages();
         loadStatuses();
@@ -499,11 +423,5 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('App initialized!');
     }
     
-    // Event Listeners for chat
-    sendBtn.addEventListener("click", send);
-    imageBtn.addEventListener("click", () => imageInput.click());
-    statusUploadBtn.addEventListener("click", () => statusInput.click());
-    statusViewBtn.addEventListener("click", toggleStatusView);
-    fullClearBtn.addEventListener("click", fullClear);
-    msgInput.addEventListener("keydown", e => e.key === "Enter" && send());
+    init();
 });
