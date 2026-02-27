@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lolo Chat -1</title>
+<title>Lolo Chat - Eesti & Ralii</title>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -21,8 +21,39 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 .msg,.status-item{max-width:85%;padding:10px 14px;margin-bottom:10px;border-radius:14px;font-size:15px;word-wrap:break-word;}
 .msg{background:#334155;color:white;align-self:flex-start;}
 .msg.own{background:#2563eb;align-self:flex-end;}
-.status-item{background:#334155;align-self:center;text-align:center;}
-.status-media{max-width:100%;max-height:300px;border-radius:10px;margin-top:8px;display:block;}
+.status-item{background:#1e293b;align-self:center;text-align:center;border-radius:20px;}
+
+/* ইমেজ মেসেজের জন্য বিশেষ স্টাইল */
+.msg img {
+    width: 100%;
+    max-width: 320px;
+    max-height: 400px;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: transform 0.2s;
+    display: block;
+    margin: 5px 0;
+}
+
+.msg img:hover {
+    transform: scale(1.02);
+}
+
+/* স্ট্যাটাস ইমেজের জন্য স্টাইল */
+.status-media {
+    max-width: 100%;
+    max-height: 450px;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    margin: 10px 0;
+}
+
+.status-item {
+    background: #1e293b;
+    border-radius: 20px;
+    padding: 15px;
+}
+
 .time{font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;}
 #input-area{position:sticky;bottom:0;background:#020617;padding:8px;display:flex;gap:6px;flex-wrap:wrap;}
 #msg{flex:1;padding:12px;border-radius:20px;border:none;outline:none;min-width:120px;}
