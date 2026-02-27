@@ -3,21 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lolo Chat - ii</title>
+<title>Lolo Chat - Login</title>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:#0f172a;font-family:Arial,sans-serif;display:flex;justify-content:center;}
 #app{width:100%;max-width:420px;height:100%;display:flex;flex-direction:column;background:#020617;}
 #topBar{position:sticky;top:0;z-index:10;background:#020617;padding:6px;display:flex;justify-content:space-between;align-items:center;}
-#userSelect{color:white;font-size:14px;display:flex;align-items:center;gap:5px;}
-#userSelect select{background:#1e293b;color:white;border:none;padding:4px;border-radius:4px;}
+#userInfo{color:white;font-size:14px;display:none;align-items:center;gap:10px;}
 #onlineUsers{color:white;font-size:14px;display:none}
 button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer;margin-left:4px;}
-#fullClearBtn{background:#dc2626;display:inline-block}
+#logoutBtn{background:#ef4444;display:none}
+#fullClearBtn{background:#dc2626;display:none}
 #statusViewBtn{background:#8b5cf6;display:inline-block}
-#chatWrap,#statusArea{flex:1;min-height:0;display:flex}
+#chatWrap,#statusArea{flex:1;min-height:0;display:none}
 #chatContainer,#statusContainer{flex:1;overflow-y:auto;background:#1e293b;padding:10px;display:flex;flex-direction:column;}
+
+/* লগইন ফর্ম */
+#loginForm {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 20px;
+    background: #020617;
+}
+
+#loginForm h3 {
+    color: white;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#loginForm input {
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: none;
+    background: #1e293b;
+    color: white;
+}
+
+#loginForm input::placeholder {
+    color: #94a3b8;
+}
+
+#loginForm button {
+    padding: 12px;
+    margin-top: 20px;
+    background: #3b82f6;
+    color: white;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#loginForm button:hover {
+    background: #2563eb;
+}
+
+#loginError {
+    color: #ef4444;
+    text-align: center;
+    margin-top: 10px;
+    font-size: 14px;
+}
 
 /* মেসেজ স্টাইল */
 .msg {
@@ -37,7 +88,7 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 }
 
 .msg.own:not(:has(img)) {
-    background: #000000;
+    background: #2563eb;
     align-self: flex-end;
 }
 
@@ -100,7 +151,7 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
     bottom:0;
     background:#020617;
     padding:8px;
-    display:flex;
+    display:none;
     gap:6px;
     flex-wrap:wrap;
 }
@@ -131,18 +182,24 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 <body>
 <div id="app">
   <div id="topBar">
-    <div id="userSelect">
-      <span style="color:white;">User:</span>
-      <select id="userDropdown">
-        <option value="eesti">eesti</option>
-        <option value="ralii">ralii</option>
-      </select>
+    <div id="userInfo">
+      <span id="currentUsername"></span>
+      <button id="logoutBtn">Logout</button>
     </div>
-    <div id="onlineUsers">O: <span id="onlineList"></span></div>
+    <div id="onlineUsers">Online: <span id="onlineList"></span></div>
     <div>
       <button id="statusViewBtn">📋 Status</button>
       <button id="fullClearBtn">FULLCL</button>
     </div>
+  </div>
+
+  <!-- লগইন ফর্ম -->
+  <div id="loginForm">
+    <h3>Lolo Chat Login</h3>
+    <input type="text" id="loginUsername" placeholder="Username">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button id="loginBtn">Login</button>
+    <div id="loginError"></div>
   </div>
 
   <div id="chatWrap">
