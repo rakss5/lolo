@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lolo Chat - Eesti & Ralii</title>
+<title>Lolo Chat - ii</title>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -18,12 +18,41 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
 #statusViewBtn{background:#8b5cf6;display:inline-block}
 #chatWrap,#statusArea{flex:1;min-height:0;display:flex}
 #chatContainer,#statusContainer{flex:1;overflow-y:auto;background:#1e293b;padding:10px;display:flex;flex-direction:column;}
-.msg,.status-item{max-width:85%;padding:10px 14px;margin-bottom:10px;border-radius:14px;font-size:15px;word-wrap:break-word;}
-.msg{background:#334155;color:white;align-self:flex-start;}
-.msg.own{background:#2563eb;align-self:flex-end;}
-.status-item{background:#1e293b;align-self:center;text-align:center;border-radius:20px;}
 
-/* ইমেজ মেসেজের জন্য বিশেষ স্টাইল */
+/* মেসেজ স্টাইল */
+.msg {
+    max-width: 85%;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    font-size: 15px;
+    word-wrap: break-word;
+}
+
+/* টেক্সট মেসেজের জন্য ব্যাকগ্রাউন্ড */
+.msg:not(:has(img)) {
+    background: #334155;
+    color: white;
+    padding: 10px 14px;
+    align-self: flex-start;
+}
+
+.msg.own:not(:has(img)) {
+    background: #2563eb;
+    align-self: flex-end;
+}
+
+/* ইমেজ মেসেজের জন্য - কোন ব্যাকগ্রাউন্ড নেই */
+.msg:has(img) {
+    background: transparent !important;
+    padding: 5px !important;
+    align-self: flex-start;
+}
+
+.msg.own:has(img) {
+    align-self: flex-end;
+}
+
+/* ইমেজ মেসেজের জন্য স্টাইল */
 .msg img {
     width: 100%;
     max-width: 320px;
@@ -33,13 +62,24 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
     transition: transform 0.2s;
     display: block;
     margin: 5px 0;
+    background-color: transparent;
 }
 
 .msg img:hover {
     transform: scale(1.02);
 }
 
-/* স্ট্যাটাস ইমেজের জন্য স্টাইল */
+/* স্ট্যাটাস আইটেম */
+.status-item {
+    background: #1e293b;
+    border-radius: 20px;
+    padding: 15px;
+    align-self: center;
+    text-align: center;
+    margin-bottom: 10px;
+    border: 3px solid;
+}
+
 .status-media {
     max-width: 100%;
     max-height: 450px;
@@ -48,16 +88,40 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
     margin: 10px 0;
 }
 
-.status-item {
-    background: #1e293b;
-    border-radius: 20px;
-    padding: 15px;
+.time {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 4px;
+    text-align: right;
 }
 
-.time{font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;}
-#input-area{position:sticky;bottom:0;background:#020617;padding:8px;display:flex;gap:6px;flex-wrap:wrap;}
-#msg{flex:1;padding:12px;border-radius:20px;border:none;outline:none;min-width:120px;}
-.sendBtn,.imageBtn,.statusUploadBtn{width:42px;height:42px;border-radius:50%;border:none;background:#fff;font-size:20px;flex-shrink:0;color:#000;}
+#input-area{
+    position:sticky;
+    bottom:0;
+    background:#020617;
+    padding:8px;
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+}
+#msg{
+    flex:1;
+    padding:12px;
+    border-radius:20px;
+    border:none;
+    outline:none;
+    min-width:120px;
+}
+.sendBtn,.imageBtn,.statusUploadBtn{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    border:none;
+    background:#fff;
+    font-size:20px;
+    flex-shrink:0;
+    color:#000;
+}
 #imageInput{display:none;}
 #imageBtn{background:#10b981;color:white;font-size:20px;line-height:1;}
 #statusInput{display:none;}
