@@ -218,40 +218,26 @@ button{
     background:#dc2626;
 }
 
-/* স্ট্যাটাস বাটন এবং নোটিফিকেশন */
-.status-btn-container {
+/* স্ট্যাটাস বাটন - ডিফল্ট লুকানো */
+#statusViewBtn {
+    background: #8b5cf6;
+    display: none;  /* ডিফল্টভাবে লুকানো */
     position: relative;
-    display: inline-block;
-}
-
-.notification-badge {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    background: #ef4444;
-    color: white;
-    border-radius: 50%;
-    width: 10px;
-    height: 10px;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #020617;
 }
 
 /* পালস অ্যানিমেশন */
 @keyframes pulse {
     0% {
         transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
     }
     50% {
-        transform: scale(1.1);
-        box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
+        transform: scale(1.05);
+        box-shadow: 0 0 0 8px rgba(139, 92, 246, 0.3);
     }
     100% {
         transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
     }
 }
 
@@ -307,10 +293,7 @@ button{
     </div>
 
     <div>
-      <button id="statusViewBtn" class="status-btn-container">
-        📋 Status
-        <span id="statusBadge" class="notification-badge"></span>
-      </button>
+      <button id="statusViewBtn">📋 Status</button>
       <button id="fullClearBtn">FULLCL</button>
     </div>
   </div>
