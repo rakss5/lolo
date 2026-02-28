@@ -76,7 +76,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }, async (payload) => {
                 console.log('User came online:', payload.new);
                 if(currentUser && payload.new.username !== currentUser) {
-                    // নতুন ইউজার অনলাইনে এসেছে - সাথে সাথে দেখাও
                     await displayOnlineUsers();
                 }
             })
@@ -87,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }, async (payload) => {
                 console.log('User went offline:', payload.old);
                 if(currentUser) {
-                    // ইউজার অফলাইনে গেছে - সাথে সাথে দেখাও
                     await displayOnlineUsers();
                 }
             })
@@ -98,7 +96,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }, async (payload) => {
                 console.log('User updated:', payload.new);
                 if(currentUser && payload.new.username !== currentUser) {
-                    // ইউজার আপডেট হয়েছে - সাথে সাথে দেখাও
                     await displayOnlineUsers();
                 }
             })
@@ -151,11 +148,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if(!error) {
             msgInput.value = '';
-            // মেসেজ পাঠানোর সময় অনলাইন স্ট্যাটাস আপডেট
             await updateMyOnlineStatus();
         }
     }
     
+    // ADD MESSAGE TO UI - ফিক্সড ভার্সন
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -176,21 +173,30 @@ document.addEventListener('DOMContentLoaded', function() {
         content += `<div class="time">${new Date(msg.time).toLocaleTimeString()}</div>`;
         
         div.innerHTML = content;
+        
+        // নতুন মেসেজ নিচে যোগ হবে (appendChild)
         chatContainer.appendChild(div);
+        
+        // অটো স্ক্রোল নিচে (সবচেয়ে নতুন মেসেজে)
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
+    // LOAD MESSAGES
     async function loadMessages() {
         if(!currentUser) return;
         
         const { data } = await supabase
             .from('messages')
             .select('*')
-            .order('time', { ascending: true });
+            .order('time', { ascending: true }); // ascending মানে পুরনো প্রথমে, নতুন শেষে
         
+        chatContainer.innerHTML = '';
         if(data) {
             data.forEach(msg => addMessage(msg, msg.username === currentUser));
         }
+        
+        // লোড হওয়ার পর নিচে স্ক্রোল
+        chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
     // রিয়েলটাইম মেসেজ লিসেনার
@@ -255,7 +261,6 @@ document.addEventListener('DOMContentLoaded', function() {
         msgInput.value = '';
         imageInput.value = '';
         
-        // ইমেজ আপলোডের সময় অনলাইন স্ট্যাটাস আপডেট
         await updateMyOnlineStatus();
     }
     
@@ -302,7 +307,6 @@ document.addEventListener('DOMContentLoaded', function() {
         statusInput.value = '';
         alert('Status uploaded!');
         
-        // স্ট্যাটাস আপলোডের সময় অনলাইন স্ট্যাটাস আপডেট
         await updateMyOnlineStatus();
         
         if(showingStatus) {
@@ -408,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // রিয়েলটাইম লিসেনার সেটআপ
         listenToMessages();
         listenToStatuses();
-        listenToOnlineUsers(); // এইটা এখন রিয়েলটাইম আপডেট দেবে
+        listenToOnlineUsers();
         
         // ফাইল আপলোড লিসেনার
         imageInput.addEventListener("change", handleImageUpload);
