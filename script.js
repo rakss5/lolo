@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let currentUser = null;
     let showingStatus = false;
-    let hasNewStatus = false; // নতুন স্ট্যাটাস আছে কিনা
     
     // DOM Elements
     const userDropdown = document.getElementById("userDropdown");
@@ -35,7 +34,37 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageBtn = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
     
-    // ========== অনলাইন ইউজার ম্যানেজমেন্ট ==========
+    // ========== স্ট্যাটাস চেক ফাংশন ==========
+    
+    async function checkOtherUsersStatus() {
+        if(!currentUser) return;
+        
+        const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
+        const { data } = await supabase
+            .from('statuses')
+            .select('username, time')
+            .gt('time', oneDayAgo)
+            .order('time', { ascending: false });
+        
+        if(data && data.length > 0) {
+            // অন্য ইউজারের স্ট্যাটাস আছে কিনা দেখুন
+            const otherUserStatus = data.find(s => s.username !== currentUser);
+            
+            if(otherUserStatus && !showingStatus) {
+                // অন্য ইউজারের স্ট্যাটাস আছে এবং স্ট্যাটাস ভিউ ওপেন না
+                statusBadge.style.display = 'flex';
+                statusViewBtn.classList.add('pulse-animation');
+            } else {
+                statusBadge.style.display = 'none';
+                statusViewBtn.classList.remove('pulse-animation');
+            }
+        } else {
+            statusBadge.style.display = 'none';
+            statusViewBtn.classList.remove('pulse-animation');
+        }
+    }
+    
+    // ========== অনলাইন ইউজার ==========
     
     async function updateMyOnlineStatus() {
         if(!currentUser) return;
@@ -64,21 +93,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function listenToOnlineUsers() {
-        supabase
-            .channel('online-users-channel')
-            .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
-                table: 'online_users' 
-            }, async () => {
-                if(currentUser) {
-                    await displayOnlineUsers();
-                }
-            })
-            .subscribe();
-    }
-    
     // ========== ইউজার সিলেক্ট ==========
     
     userDropdown.addEventListener("change", async (e) => {
@@ -94,16 +108,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             chatContainer.innerHTML = '';
             loadMessages();
-            loadStatuses();
             await displayOnlineUsers();
             
-            // নতুন ইউজার সিলেক্ট করলে নোটিফিকেশন রিসেট
-            hasNewStatus = false;
-            statusBadge.style.display = 'none';
+            // স্ট্যাটাস চেক
+            await checkOtherUsersStatus();
         }
     });
     
-    // ========== মেসেজ ফাংশন ==========
+    // ========== মেসেজ ==========
     
     async function send() {
         if(!currentUser) {
@@ -165,22 +177,6 @@ document.addEventListener('DOMContentLoaded', function() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
-    function listenToMessages() {
-        supabase
-            .channel('messages-channel')
-            .on('postgres_changes', { 
-                event: 'INSERT', 
-                schema: 'public', 
-                table: 'messages' 
-            }, payload => {
-                console.log('New message:', payload.new);
-                if(currentUser) {
-                    addMessage(payload.new, payload.new.username === currentUser);
-                }
-            })
-            .subscribe();
-    }
-    
     // ========== ইমেজ আপলোড ==========
     
     async function handleImageUpload(e) {
@@ -228,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
         await updateMyOnlineStatus();
     }
     
-    // ========== স্ট্যাটাস ফাংশন (নোটিফিকেশন সহ) ==========
+    // ========== স্ট্যাটাস ফাংশন ==========
     
     async function handleStatusUpload(e) {
         if(!currentUser) {
@@ -271,6 +267,9 @@ document.addEventListener('DOMContentLoaded', function() {
         statusInput.value = '';
         alert('Status uploaded!');
         await updateMyOnlineStatus();
+        
+        // স্ট্যাটাস আপলোডের পর অন্য ইউজারের জন্য নোটিফিকেশন চেক
+        setTimeout(checkOtherUsersStatus, 1000);
     }
     
     function addStatus(status) {
@@ -311,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if(data) data.forEach(addStatus);
     }
     
-    // রিয়েলটাইম স্ট্যাটাস লিসেনার (নোটিফিকেশন সহ)
+    // রিয়েলটাইম স্ট্যাটাস লিসেনার
     function listenToStatuses() {
         supabase
             .channel('statuses-channel')
@@ -323,13 +322,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('New status:', payload.new);
                 
                 if(currentUser) {
-                    // যদি স্ট্যাটাস ভিউ না দেখা হয় এবং নিজের স্ট্যাটাস না হয়
                     if(!showingStatus && payload.new.username !== currentUser) {
-                        hasNewStatus = true;
+                        // অন্য ইউজারের নতুন স্ট্যাটাস এবং স্ট্যাটাস ভিউ ওপেন না
                         statusBadge.style.display = 'flex';
+                        statusViewBtn.classList.add('pulse-animation');
                     }
                     
-                    // স্ট্যাটাস ভিউ ওপেন থাকলে সরাসরি দেখাও
                     if(showingStatus) {
                         addStatus(payload.new);
                     }
@@ -352,16 +350,19 @@ document.addEventListener('DOMContentLoaded', function() {
             loadStatuses();
             
             // স্ট্যাটাস দেখলে নোটিফিকেশন সরাও
-            hasNewStatus = false;
             statusBadge.style.display = 'none';
+            statusViewBtn.classList.remove('pulse-animation');
         } else {
             chatWrap.style.display = "flex";
             statusArea.style.display = "none";
             statusViewBtn.style.background = "#8b5cf6";
+            
+            // স্ট্যাটাস ভিউ বন্ধ করলে আবার চেক করুন
+            checkOtherUsersStatus();
         }
     }
     
-    // ========== ক্লিয়ার ফাংশন ==========
+    // ========== ক্লিয়ার ==========
     
     async function fullClear() {
         if(!currentUser) {
@@ -374,7 +375,40 @@ document.addEventListener('DOMContentLoaded', function() {
             await supabase.from('statuses').delete().gte('id', 0);
             chatContainer.innerHTML = '';
             statusContainer.innerHTML = '';
+            checkOtherUsersStatus();
         }
+    }
+    
+    // ========== লিসেনার ==========
+    
+    function listenToOnlineUsers() {
+        supabase
+            .channel('online-users-channel')
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'online_users' 
+            }, async () => {
+                if(currentUser) {
+                    await displayOnlineUsers();
+                }
+            })
+            .subscribe();
+    }
+    
+    function listenToMessages() {
+        supabase
+            .channel('messages-channel')
+            .on('postgres_changes', { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'messages' 
+            }, payload => {
+                if(currentUser) {
+                    addMessage(payload.new, payload.new.username === currentUser);
+                }
+            })
+            .subscribe();
     }
     
     // ========== ইনিশিয়ালাইজ ==========
@@ -383,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('App initializing...');
         
         listenToMessages();
-        listenToStatuses(); // আপডেটেড ভার্সন
+        listenToStatuses();
         listenToOnlineUsers();
         
         imageInput.addEventListener("change", handleImageUpload);
@@ -395,6 +429,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 await displayOnlineUsers();
             }
         }, 10000);
+        
+        setInterval(() => {
+            if(currentUser && !showingStatus) {
+                checkOtherUsersStatus();
+            }
+        }, 5000);
         
         window.addEventListener('beforeunload', function() {
             if(currentUser) {
