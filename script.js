@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize Supabase
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    // USERS & COLORS - শুধু eesti এবং ralii
+    // USERS & COLORS
     const colors = {
         eesti: "#22c55e",
         ralii: "#619efa"
@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let currentUser = null;
     let showingStatus = false;
+    let hasNewStatus = false; // নতুন স্ট্যাটাস আছে কিনা
     
     // DOM Elements
     const userDropdown = document.getElementById("userDropdown");
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusContainer = document.getElementById("statusContainer");
     const fullClearBtn = document.getElementById("fullClearBtn");
     const statusViewBtn = document.getElementById("statusViewBtn");
+    const statusBadge = document.getElementById("statusBadge");
     const onlineUsersEl = document.getElementById("onlineUsers");
     const onlineList = document.getElementById("onlineList");
     const imageInput = document.getElementById("imageInput");
@@ -35,24 +37,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ========== অনলাইন ইউজার ম্যানেজমেন্ট ==========
     
-    // নিজের অনলাইন স্ট্যাটাস আপডেট
     async function updateMyOnlineStatus() {
         if(!currentUser) return;
-        
         await supabase.from('online_users').upsert({ 
             username: currentUser, 
             last_seen: new Date().toISOString() 
         });
     }
     
-    // অনলাইন ইউজার লিস্ট দেখানো
     async function displayOnlineUsers() {
         if(!currentUser) return;
         
         const { data } = await supabase
             .from('online_users')
             .select('username')
-            .gt('last_seen', new Date(Date.now() - 10000).toISOString()); // 10 সেকেন্ড
+            .gt('last_seen', new Date(Date.now() - 10000).toISOString());
         
         if(data) {
             const otherUsers = data
@@ -65,50 +64,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // রিয়েলটাইম অনলাইন লিসেনার - ইউজার যোগ/সরানো হলে সাথে সাথে দেখাবে
     function listenToOnlineUsers() {
         supabase
             .channel('online-users-channel')
             .on('postgres_changes', { 
-                event: 'INSERT', 
+                event: '*', 
                 schema: 'public', 
                 table: 'online_users' 
-            }, async (payload) => {
-                console.log('User came online:', payload.new);
-                if(currentUser && payload.new.username !== currentUser) {
-                    await displayOnlineUsers();
-                }
-            })
-            .on('postgres_changes', { 
-                event: 'DELETE', 
-                schema: 'public', 
-                table: 'online_users' 
-            }, async (payload) => {
-                console.log('User went offline:', payload.old);
+            }, async () => {
                 if(currentUser) {
                     await displayOnlineUsers();
                 }
             })
-            .on('postgres_changes', { 
-                event: 'UPDATE', 
-                schema: 'public', 
-                table: 'online_users' 
-            }, async (payload) => {
-                console.log('User updated:', payload.new);
-                if(currentUser && payload.new.username !== currentUser) {
-                    await displayOnlineUsers();
-                }
-            })
-            .subscribe((status) => {
-                console.log('Online users subscription status:', status);
-            });
+            .subscribe();
     }
     
     // ========== ইউজার সিলেক্ট ==========
     
     userDropdown.addEventListener("change", async (e) => {
         if(e.target.value) {
-            // আগের ইউজার থাকলে তার অনলাইন স্ট্যাটাস ডিলিট
             if(currentUser) {
                 await supabase.from('online_users').delete().eq('username', currentUser);
             }
@@ -116,16 +90,16 @@ document.addEventListener('DOMContentLoaded', function() {
             currentUser = e.target.value;
             console.log('User selected:', currentUser);
             
-            // নতুন ইউজারের অনলাইন স্ট্যাটাস যোগ
             await updateMyOnlineStatus();
             
-            // মেসেজ লোড
             chatContainer.innerHTML = '';
             loadMessages();
             loadStatuses();
-            
-            // অনলাইন ইউজার দেখাও
             await displayOnlineUsers();
+            
+            // নতুন ইউজার সিলেক্ট করলে নোটিফিকেশন রিসেট
+            hasNewStatus = false;
+            statusBadge.style.display = 'none';
         }
     });
     
@@ -152,7 +126,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI - ফিক্সড ভার্সন
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -173,33 +146,25 @@ document.addEventListener('DOMContentLoaded', function() {
         content += `<div class="time">${new Date(msg.time).toLocaleTimeString()}</div>`;
         
         div.innerHTML = content;
-        
-        // নতুন মেসেজ নিচে যোগ হবে (appendChild)
         chatContainer.appendChild(div);
-        
-        // অটো স্ক্রোল নিচে (সবচেয়ে নতুন মেসেজে)
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
-    // LOAD MESSAGES
     async function loadMessages() {
         if(!currentUser) return;
         
         const { data } = await supabase
             .from('messages')
             .select('*')
-            .order('time', { ascending: true }); // ascending মানে পুরনো প্রথমে, নতুন শেষে
+            .order('time', { ascending: true });
         
         chatContainer.innerHTML = '';
         if(data) {
             data.forEach(msg => addMessage(msg, msg.username === currentUser));
         }
-        
-        // লোড হওয়ার পর নিচে স্ক্রোল
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
-    // রিয়েলটাইম মেসেজ লিসেনার
     function listenToMessages() {
         supabase
             .channel('messages-channel')
@@ -260,11 +225,10 @@ document.addEventListener('DOMContentLoaded', function() {
         await supabase.from('messages').insert([message]);
         msgInput.value = '';
         imageInput.value = '';
-        
         await updateMyOnlineStatus();
     }
     
-    // ========== স্ট্যাটাস ফাংশন ==========
+    // ========== স্ট্যাটাস ফাংশন (নোটিফিকেশন সহ) ==========
     
     async function handleStatusUpload(e) {
         if(!currentUser) {
@@ -306,12 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
         msgInput.value = '';
         statusInput.value = '';
         alert('Status uploaded!');
-        
         await updateMyOnlineStatus();
-        
-        if(showingStatus) {
-            addStatus(status);
-        }
     }
     
     function addStatus(status) {
@@ -352,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if(data) data.forEach(addStatus);
     }
     
-    // রিয়েলটাইম স্ট্যাটাস লিসেনার
+    // রিয়েলটাইম স্ট্যাটাস লিসেনার (নোটিফিকেশন সহ)
     function listenToStatuses() {
         supabase
             .channel('statuses-channel')
@@ -362,8 +321,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 table: 'statuses' 
             }, payload => {
                 console.log('New status:', payload.new);
-                if(currentUser && showingStatus) {
-                    addStatus(payload.new);
+                
+                if(currentUser) {
+                    // যদি স্ট্যাটাস ভিউ না দেখা হয় এবং নিজের স্ট্যাটাস না হয়
+                    if(!showingStatus && payload.new.username !== currentUser) {
+                        hasNewStatus = true;
+                        statusBadge.style.display = 'flex';
+                    }
+                    
+                    // স্ট্যাটাস ভিউ ওপেন থাকলে সরাসরি দেখাও
+                    if(showingStatus) {
+                        addStatus(payload.new);
+                    }
                 }
             })
             .subscribe();
@@ -381,6 +350,10 @@ document.addEventListener('DOMContentLoaded', function() {
             statusArea.style.display = "flex";
             statusViewBtn.style.background = "#f97316";
             loadStatuses();
+            
+            // স্ট্যাটাস দেখলে নোটিফিকেশন সরাও
+            hasNewStatus = false;
+            statusBadge.style.display = 'none';
         } else {
             chatWrap.style.display = "flex";
             statusArea.style.display = "none";
@@ -409,16 +382,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function init() {
         console.log('App initializing...');
         
-        // রিয়েলটাইম লিসেনার সেটআপ
         listenToMessages();
-        listenToStatuses();
+        listenToStatuses(); // আপডেটেড ভার্সন
         listenToOnlineUsers();
         
-        // ফাইল আপলোড লিসেনার
         imageInput.addEventListener("change", handleImageUpload);
         statusInput.addEventListener("change", handleStatusUpload);
         
-        // প্রতি ১০ সেকেন্ডে অনলাইন স্ট্যাটাস রিফ্রেশ (নিরাপত্তার জন্য)
         setInterval(async () => {
             if(currentUser) {
                 await updateMyOnlineStatus();
@@ -426,7 +396,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 10000);
         
-        // ব্রাউজার বন্ধ হলে অনলাইন স্ট্যাটাস মুছে ফেলার চেষ্টা
         window.addEventListener('beforeunload', function() {
             if(currentUser) {
                 supabase.from('online_users').delete().eq('username', currentUser);
