@@ -32,25 +32,34 @@ body{
     display:flex;
 }
 
-#chatContainer,#statusContainer{
-    flex:1;
-    overflow-y:auto;
-    background:#1e293b;
-    padding:10px;
-    display:flex;
-    flex-direction:column;
+/* Chat Container - ফ্লেক্স কলাম normally (উপর থেকে নিচে) */
+#chatContainer, #statusContainer {
+    flex: 1;
+    overflow-y: auto;
+    background: #1e293b;
+    padding: 10px;
+    display: flex;
+    flex-direction: column; /* reverse না, normal column */
+    justify-content: flex-end; /* কন্টেন্ট নিচ থেকে শুরু হবে */
 }
 
 /* ====== MESSAGE STYLE ====== */
 
 .msg{
     max-width:85%;
-    margin-bottom:10px;
+    margin-top:10px;
+    margin-bottom:0;
     border-radius:14px;
     font-size:15px;
     word-wrap:break-word;
 }
 
+/* প্রথম মেসেজের জন্য টপ মার্জিন কম */
+.msg:first-child {
+    margin-top: 0;
+}
+
+/* টেক্সট মেসেজের জন্য ব্যাকগ্রাউন্ড */
 .msg:not(:has(img)){
     background:#334155;
     color:white;
@@ -63,6 +72,7 @@ body{
     align-self:flex-end;
 }
 
+/* ইমেজ মেসেজের জন্য - কোন ব্যাকগ্রাউন্ড নেই */
 .msg:has(img){
     background:transparent !important;
     padding:5px !important;
@@ -73,6 +83,7 @@ body{
     align-self:flex-end;
 }
 
+/* ইমেজ স্টাইল */
 .msg img{
     width:100%;
     max-width:320px;
@@ -247,7 +258,7 @@ button{
     <input type="file" id="statusInput" accept="image/*,video/*">
   </div>
 
-  <!-- TopBar NOW at Bottom -->
+  <!-- TopBar at Bottom -->
   <div id="topBar">
     <div id="userSelect">
       <span>User:</span>
