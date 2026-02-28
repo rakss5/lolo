@@ -32,15 +32,15 @@ body{
     display:flex;
 }
 
-/* Chat Container - ফ্লেক্স কলাম normally (উপর থেকে নিচে) */
+/* Chat Container */
 #chatContainer, #statusContainer {
     flex: 1;
     overflow-y: auto;
     background: #1e293b;
     padding: 10px;
     display: flex;
-    flex-direction: column; /* reverse না, normal column */
-    justify-content: flex-end; /* কন্টেন্ট নিচ থেকে শুরু হবে */
+    flex-direction: column;
+    justify-content: flex-end;
 }
 
 /* ====== MESSAGE STYLE ====== */
@@ -54,12 +54,10 @@ body{
     word-wrap:break-word;
 }
 
-/* প্রথম মেসেজের জন্য টপ মার্জিন কম */
 .msg:first-child {
     margin-top: 0;
 }
 
-/* টেক্সট মেসেজের জন্য ব্যাকগ্রাউন্ড */
 .msg:not(:has(img)){
     background:#334155;
     color:white;
@@ -72,7 +70,6 @@ body{
     align-self:flex-end;
 }
 
-/* ইমেজ মেসেজের জন্য - কোন ব্যাকগ্রাউন্ড নেই */
 .msg:has(img){
     background:transparent !important;
     padding:5px !important;
@@ -83,7 +80,6 @@ body{
     align-self:flex-end;
 }
 
-/* ইমেজ স্টাইল */
 .msg img{
     width:100%;
     max-width:320px;
@@ -173,7 +169,7 @@ body{
     display:none;
 }
 
-/* ===== TOPBAR (NOW AT BOTTOM) ===== */
+/* ===== TOPBAR ===== */
 
 #topBar{
     position:sticky;
@@ -222,8 +218,38 @@ button{
     background:#dc2626;
 }
 
-#statusViewBtn{
-    background:#8b5cf6;
+/* স্ট্যাটাস বাটন এবং নোটিফিকেশন ব্যাজ */
+.status-btn-container {
+    position: relative;
+    display: inline-block;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #020617;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 </style>
 </head>
@@ -258,7 +284,7 @@ button{
     <input type="file" id="statusInput" accept="image/*,video/*">
   </div>
 
-  <!-- TopBar at Bottom -->
+  <!-- TopBar -->
   <div id="topBar">
     <div id="userSelect">
       <span>User:</span>
@@ -274,7 +300,10 @@ button{
     </div>
 
     <div>
-      <button id="statusViewBtn">📋 Status</button>
+      <button id="statusViewBtn" class="status-btn-container">
+        📋 Status
+        <span id="statusBadge" class="notification-badge" style="display:none;"></span>
+      </button>
       <button id="fullClearBtn">FULLCL</button>
     </div>
   </div>
