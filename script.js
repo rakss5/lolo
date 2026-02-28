@@ -25,7 +25,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusContainer = document.getElementById("statusContainer");
     const fullClearBtn = document.getElementById("fullClearBtn");
     const statusViewBtn = document.getElementById("statusViewBtn");
-    const statusBadge = document.getElementById("statusBadge");
     const onlineUsersEl = document.getElementById("onlineUsers");
     const onlineList = document.getElementById("onlineList");
     const imageInput = document.getElementById("imageInput");
@@ -52,14 +51,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if(otherUserStatus && !showingStatus) {
                 // অন্য ইউজারের স্ট্যাটাস আছে এবং স্ট্যাটাস ভিউ ওপেন না
-                statusBadge.style.display = 'flex';
+                statusViewBtn.style.display = 'inline-block';
                 statusViewBtn.classList.add('pulse-animation');
-            } else {
-                statusBadge.style.display = 'none';
+            } else if(!otherUserStatus) {
+                statusViewBtn.style.display = 'none';
                 statusViewBtn.classList.remove('pulse-animation');
             }
         } else {
-            statusBadge.style.display = 'none';
+            statusViewBtn.style.display = 'none';
             statusViewBtn.classList.remove('pulse-animation');
         }
     }
@@ -324,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(currentUser) {
                     if(!showingStatus && payload.new.username !== currentUser) {
                         // অন্য ইউজারের নতুন স্ট্যাটাস এবং স্ট্যাটাস ভিউ ওপেন না
-                        statusBadge.style.display = 'flex';
+                        statusViewBtn.style.display = 'inline-block';
                         statusViewBtn.classList.add('pulse-animation');
                     }
                     
@@ -349,8 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusViewBtn.style.background = "#f97316";
             loadStatuses();
             
-            // স্ট্যাটাস দেখলে নোটিফিকেশন সরাও
-            statusBadge.style.display = 'none';
+            // স্ট্যাটাস দেখলে অ্যানিমেশন বন্ধ রাখো কিন্তু বাটন দেখাও
             statusViewBtn.classList.remove('pulse-animation');
         } else {
             chatWrap.style.display = "flex";
