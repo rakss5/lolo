@@ -4,96 +4,118 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lolo ii</title>
+
 <style>
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{background:#0f172a;font-family:Arial,sans-serif;display:flex;justify-content:center;}
-#app{width:100%;max-width:420px;height:100%;display:flex;flex-direction:column;background:#020617;}
-#topBar{position:sticky;top:0;z-index:10;background:#020617;padding:6px;display:flex;justify-content:space-between;align-items:center;}
-#userSelect{color:white;font-size:14px;display:flex;align-items:center;gap:5px;}
-#userSelect select{background:#1e293b;color:white;border:none;padding:4px;border-radius:4px;}
-#onlineUsers{color:white;font-size:14px;display:none}
-button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer;margin-left:4px;}
-#fullClearBtn{background:#dc2626;display:inline-block}
-#statusViewBtn{background:#8b5cf6;display:inline-block}
-#chatWrap,#statusArea{flex:1;min-height:0;display:flex}
-#chatContainer,#statusContainer{flex:1;overflow-y:auto;background:#1e293b;padding:10px;display:flex;flex-direction:column;}
 
-/* মেসেজ স্টাইল */
-.msg {
-    max-width: 85%;
-    margin-bottom: 10px;
-    border-radius: 14px;
-    font-size: 15px;
-    word-wrap: break-word;
+body{
+    background:#0f172a;
+    font-family:Arial,sans-serif;
+    display:flex;
+    justify-content:center;
 }
 
-/* টেক্সট মেসেজের জন্য ব্যাকগ্রাউন্ড */
-.msg:not(:has(img)) {
-    background: #334155;
-    color: white;
-    padding: 10px 14px;
-    align-self: flex-start;
+#app{
+    width:100%;
+    max-width:420px;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    background:#020617;
 }
 
-.msg.own:not(:has(img)) {
-    background: #000000;
-    align-self: flex-end;
+/* Chat & Status Area */
+#chatWrap,#statusArea{
+    flex:1;
+    min-height:0;
+    display:flex;
 }
 
-/* ইমেজ মেসেজের জন্য - কোন ব্যাকগ্রাউন্ড নেই */
-.msg:has(img) {
-    background: transparent !important;
-    padding: 5px !important;
-    align-self: flex-start;
+#chatContainer,#statusContainer{
+    flex:1;
+    overflow-y:auto;
+    background:#1e293b;
+    padding:10px;
+    display:flex;
+    flex-direction:column;
 }
 
-.msg.own:has(img) {
-    align-self: flex-end;
+/* ====== MESSAGE STYLE ====== */
+
+.msg{
+    max-width:85%;
+    margin-bottom:10px;
+    border-radius:14px;
+    font-size:15px;
+    word-wrap:break-word;
 }
 
-/* ইমেজ মেসেজের জন্য স্টাইল */
-.msg img {
-    width: 100%;
-    max-width: 320px;
-    max-height: 400px;
-    border-radius: 15px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    transition: transform 0.2s;
-    display: block;
-    margin: 5px 0;
-    background-color: transparent;
+.msg:not(:has(img)){
+    background:#334155;
+    color:white;
+    padding:10px 14px;
+    align-self:flex-start;
 }
 
-.msg img:hover {
-    transform: scale(1.02);
+.msg.own:not(:has(img)){
+    background:#000000;
+    align-self:flex-end;
 }
 
-/* স্ট্যাটাস আইটেম */
-.status-item {
-    background: #1e293b;
-    border-radius: 20px;
-    padding: 15px;
-    align-self: center;
-    text-align: center;
-    margin-bottom: 10px;
-    border: 3px solid;
+.msg:has(img){
+    background:transparent !important;
+    padding:5px !important;
+    align-self:flex-start;
 }
 
-.status-media {
-    max-width: 100%;
-    max-height: 450px;
-    border-radius: 15px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    margin: 10px 0;
+.msg.own:has(img){
+    align-self:flex-end;
 }
 
-.time {
-    font-size: 11px;
-    color: #94a3b8;
-    margin-top: 4px;
-    text-align: right;
+.msg img{
+    width:100%;
+    max-width:320px;
+    max-height:400px;
+    border-radius:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    transition:transform 0.2s;
+    display:block;
+    margin:5px 0;
 }
+
+.msg img:hover{
+    transform:scale(1.02);
+}
+
+.time{
+    font-size:11px;
+    color:#94a3b8;
+    margin-top:4px;
+    text-align:right;
+}
+
+/* ====== STATUS ====== */
+
+.status-item{
+    background:#1e293b;
+    border-radius:20px;
+    padding:15px;
+    align-self:center;
+    text-align:center;
+    margin-bottom:10px;
+    border:3px solid;
+}
+
+.status-media{
+    max-width:100%;
+    max-height:450px;
+    border-radius:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    margin:10px 0;
+}
+
+/* ===== INPUT AREA ===== */
 
 #input-area{
     position:sticky;
@@ -103,7 +125,9 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
     display:flex;
     gap:6px;
     flex-wrap:wrap;
+    border-top:1px solid #334155;
 }
+
 #msg{
     flex:1;
     padding:12px;
@@ -112,6 +136,7 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
     outline:none;
     min-width:120px;
 }
+
 .sendBtn,.imageBtn,.statusUploadBtn{
     width:42px;
     height:42px;
@@ -122,51 +147,131 @@ button{border:none;border-radius:6px;color:white;padding:6px 10px;cursor:pointer
     flex-shrink:0;
     color:#000;
 }
-#imageInput{display:none;}
-#imageBtn{background:#10b981;color:white;font-size:20px;line-height:1;}
-#statusInput{display:none;}
-#statusUploadBtn{background:#8b5cf6;color:white;font-size:20px;line-height:1;}
+
+#imageBtn{
+    background:#10b981;
+    color:white;
+}
+
+#statusUploadBtn{
+    background:#8b5cf6;
+    color:white;
+}
+
+#imageInput,#statusInput{
+    display:none;
+}
+
+/* ===== TOPBAR (NOW AT BOTTOM) ===== */
+
+#topBar{
+    position:sticky;
+    bottom:0;
+    z-index:10;
+    background:#020617;
+    padding:6px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-top:1px solid #334155;
+}
+
+#userSelect{
+    color:white;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    gap:5px;
+}
+
+#userSelect select{
+    background:#1e293b;
+    color:white;
+    border:none;
+    padding:4px;
+    border-radius:4px;
+}
+
+#onlineUsers{
+    color:white;
+    font-size:14px;
+    display:none;
+}
+
+button{
+    border:none;
+    border-radius:6px;
+    color:white;
+    padding:6px 10px;
+    cursor:pointer;
+    margin-left:4px;
+}
+
+#fullClearBtn{
+    background:#dc2626;
+}
+
+#statusViewBtn{
+    background:#8b5cf6;
+}
 </style>
 </head>
+
 <body>
+
 <div id="app">
+
+  <!-- Chat Area -->
+  <div id="chatWrap">
+    <div id="chatContainer"></div>
+  </div>
+
+  <!-- Status Area -->
+  <div id="statusArea" style="display:none;">
+    <div id="statusContainer"></div>
+  </div>
+
+  <!-- Input Area -->
+  <div id="input-area">
+    <input id="msg" placeholder="Type message">
+    <button class="sendBtn" id="sendBtn">📤</button>
+
+    <label for="imageInput">
+      <button class="imageBtn" id="imageBtn">📷</button>
+    </label>
+    <input type="file" id="imageInput" accept="image/*">
+
+    <label for="statusInput">
+      <button class="statusUploadBtn" id="statusUploadBtn">📋+</button>
+    </label>
+    <input type="file" id="statusInput" accept="image/*,video/*">
+  </div>
+
+  <!-- TopBar NOW at Bottom -->
   <div id="topBar">
     <div id="userSelect">
-      <span style="color:white;">User:</span>
-    <select id="userDropdown">
-      <option value="" selected disabled>Select</option>
-      <option value="eesti">eesti</option>
-      <option value="ralii">ralii</option>
-    </select>
+      <span>User:</span>
+      <select id="userDropdown">
+        <option value="" selected disabled>Select</option>
+        <option value="eesti">eesti</option>
+        <option value="ralii">ralii</option>
+      </select>
     </div>
-    <div id="onlineUsers">O: <span id="onlineList"></span></div>
+
+    <div id="onlineUsers">
+      O: <span id="onlineList"></span>
+    </div>
+
     <div>
       <button id="statusViewBtn">📋 Status</button>
       <button id="fullClearBtn">FULLCL</button>
     </div>
   </div>
 
-  <div id="chatWrap">
-    <div id="chatContainer"></div>
-  </div>
-
-  <div id="statusArea" style="display:none;">
-    <div id="statusContainer"></div>
-  </div>
-
-  <div id="input-area">
-    <input id="msg" placeholder="Type message">
-    <button class="sendBtn" id="sendBtn">📤</button>
-    <!-- ইমেজ পাঠানোর বাটন -->
-    <label for="imageInput"><button class="imageBtn" id="imageBtn">📷</button></label>
-    <input type="file" id="imageInput" accept="image/*">
-    <!-- স্ট্যাটাস আপলোডের বাটন -->
-    <label for="statusInput"><button class="statusUploadBtn" id="statusUploadBtn">📋+</button></label>
-    <input type="file" id="statusInput" accept="image/*,video/*">
-  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="script.js"></script>
+
 </body>
 </html>
