@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let currentUser = null;
     let showingStatus = false;
+    let lastSeenStatusTime = null;
+    let newStatusAvailable = false;
     
     // DOM Elements
     const userDropdown = document.getElementById("userDropdown");
@@ -25,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusContainer = document.getElementById("statusContainer");
     const fullClearBtn = document.getElementById("fullClearBtn");
     const statusViewBtn = document.getElementById("statusViewBtn");
+    const statusDot = document.getElementById("statusDot");
     const onlineUsersEl = document.getElementById("onlineUsers");
     const onlineList = document.getElementById("onlineList");
     const imageInput = document.getElementById("imageInput");
@@ -35,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ========== স্ট্যাটাস চেক ফাংশন ==========
     
-    async function checkOtherUsersStatus() {
+    async function checkAnyStatus() {
         if(!currentUser) return;
         
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
@@ -46,20 +49,27 @@ document.addEventListener('DOMContentLoaded', function() {
             .order('time', { ascending: false });
         
         if(data && data.length > 0) {
-            // অন্য ইউজারের স্ট্যাটাস আছে কিনা দেখুন
-            const otherUserStatus = data.find(s => s.username !== currentUser);
+            // কোনো স্ট্যাটাস আছে - বাটন দেখাও
+            statusViewBtn.style.display = 'inline-block';
             
-            if(otherUserStatus && !showingStatus) {
-                // অন্য ইউজারের স্ট্যাটাস আছে এবং স্ট্যাটাস ভিউ ওপেন না
-                statusViewBtn.style.display = 'inline-block';
-                statusViewBtn.classList.add('pulse-animation');
-            } else if(!otherUserStatus) {
-                statusViewBtn.style.display = 'none';
-                statusViewBtn.classList.remove('pulse-animation');
+            // নতুন স্ট্যাটাস চেক (যা ইউজার দেখেনি)
+            if(lastSeenStatusTime) {
+                const newStatuses = data.filter(s => new Date(s.time) > new Date(lastSeenStatusTime));
+                if(newStatuses.length > 0 && !showingStatus) {
+                    newStatusAvailable = true;
+                    statusDot.style.display = 'block';
+                    statusViewBtn.classList.add('new-status-animation');
+                } else {
+                    newStatusAvailable = false;
+                    statusDot.style.display = 'none';
+                    statusViewBtn.classList.remove('new-status-animation');
+                }
             }
         } else {
+            // কোনো স্ট্যাটাস নেই - বাটন লুকাও
             statusViewBtn.style.display = 'none';
-            statusViewBtn.classList.remove('pulse-animation');
+            statusDot.style.display = 'none';
+            statusViewBtn.classList.remove('new-status-animation');
         }
     }
     
@@ -110,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await displayOnlineUsers();
             
             // স্ট্যাটাস চেক
-            await checkOtherUsersStatus();
+            await checkAnyStatus();
         }
     });
     
@@ -267,8 +277,8 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Status uploaded!');
         await updateMyOnlineStatus();
         
-        // স্ট্যাটাস আপলোডের পর অন্য ইউজারের জন্য নোটিফিকেশন চেক
-        setTimeout(checkOtherUsersStatus, 1000);
+        // স্ট্যাটাস আপলোডের পর চেক
+        setTimeout(checkAnyStatus, 1000);
     }
     
     function addStatus(status) {
@@ -307,6 +317,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         statusContainer.innerHTML = '';
         if(data) data.forEach(addStatus);
+        
+        // স্ট্যাটাস দেখার সময় রেকর্ড করি
+        lastSeenStatusTime = new Date().toISOString();
+        newStatusAvailable = false;
+        statusDot.style.display = 'none';
+        statusViewBtn.classList.remove('new-status-animation');
     }
     
     // রিয়েলটাইম স্ট্যাটাস লিসেনার
@@ -321,16 +337,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('New status:', payload.new);
                 
                 if(currentUser) {
-                    if(!showingStatus && payload.new.username !== currentUser) {
-                        // অন্য ইউজারের নতুন স্ট্যাটাস এবং স্ট্যাটাস ভিউ ওপেন না
-                        statusViewBtn.style.display = 'inline-block';
-                        statusViewBtn.classList.add('pulse-animation');
-                    }
+                    // বাটন দেখাও (যেহেতু স্ট্যাটাস আছে)
+                    statusViewBtn.style.display = 'inline-block';
                     
+                    // যদি স্ট্যাটাস ভিউ ওপেন থাকে তাহলে সরাসরি দেখাও
                     if(showingStatus) {
                         addStatus(payload.new);
+                    } 
+                    // যদি স্ট্যাটাস ভিউ বন্ধ থাকে এবং এটা অন্য ইউজারের স্ট্যাটাস হয়
+                    else if(payload.new.username !== currentUser) {
+                        newStatusAvailable = true;
+                        statusDot.style.display = 'block';
+                        statusViewBtn.classList.add('new-status-animation');
                     }
                 }
+            })
+            .on('postgres_changes', { 
+                event: 'DELETE', 
+                schema: 'public', 
+                table: 'statuses' 
+            }, () => {
+                // স্ট্যাটাস ডিলিট হলে আবার চেক করি
+                setTimeout(checkAnyStatus, 1000);
             })
             .subscribe();
     }
@@ -347,16 +375,13 @@ document.addEventListener('DOMContentLoaded', function() {
             statusArea.style.display = "flex";
             statusViewBtn.style.background = "#f97316";
             loadStatuses();
-            
-            // স্ট্যাটাস দেখলে অ্যানিমেশন বন্ধ রাখো কিন্তু বাটন দেখাও
-            statusViewBtn.classList.remove('pulse-animation');
         } else {
             chatWrap.style.display = "flex";
             statusArea.style.display = "none";
             statusViewBtn.style.background = "#8b5cf6";
             
-            // স্ট্যাটাস ভিউ বন্ধ করলে আবার চেক করুন
-            checkOtherUsersStatus();
+            // স্ট্যাটাস ভিউ বন্ধ করলে চেক করি নতুন স্ট্যাটাস আছে কিনা
+            checkAnyStatus();
         }
     }
     
@@ -373,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await supabase.from('statuses').delete().gte('id', 0);
             chatContainer.innerHTML = '';
             statusContainer.innerHTML = '';
-            checkOtherUsersStatus();
+            checkAnyStatus();
         }
     }
     
@@ -428,11 +453,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 10000);
         
+        // প্রতি মিনিটে স্ট্যাটাস চেক করি (এক্সপায়ারের জন্য)
         setInterval(() => {
-            if(currentUser && !showingStatus) {
-                checkOtherUsersStatus();
+            if(currentUser) {
+                checkAnyStatus();
             }
-        }, 5000);
+        }, 60000);
         
         window.addEventListener('beforeunload', function() {
             if(currentUser) {
