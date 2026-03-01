@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentUser = null;
     let showingStatus = false;
     let lastSeenStatusTime = null;
-    let newStatusAvailable = false;
     
     // DOM Elements
     const userDropdown = document.getElementById("userDropdown");
@@ -36,6 +35,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageBtn = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
     
+    // ========== ইউটিউব লিংক ডিটেক্ট ফাংশন ==========
+    function isYouTubeLink(text) {
+        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+        return youtubeRegex.test(text.trim());
+    }
+    
+    function formatMessageText(text) {
+        if (!text) return '';
+        
+        const words = text.split(' ');
+        let formattedHtml = '';
+        
+        words.forEach(word => {
+            if (isYouTubeLink(word)) {
+                formattedHtml += `<span class="message-link" onclick="window.open('${word}', '_blank')">${word}</span> `;
+            } else {
+                formattedHtml += word + ' ';
+            }
+        });
+        
+        return formattedHtml;
+    }
+    
     // ========== স্ট্যাটাস চেক ফাংশন ==========
     
     async function checkAnyStatus() {
@@ -54,11 +76,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if(lastSeenStatusTime) {
                 const newStatuses = data.filter(s => new Date(s.time) > new Date(lastSeenStatusTime));
                 if(newStatuses.length > 0 && !showingStatus) {
-                    newStatusAvailable = true;
                     statusDot.style.display = 'block';
                     statusViewBtn.classList.add('new-status-animation');
                 } else {
-                    newStatusAvailable = false;
                     statusDot.style.display = 'none';
                     statusViewBtn.classList.remove('new-status-animation');
                 }
@@ -143,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI
+    // ADD MESSAGE TO UI - লিংক ডিটেক্ট সহ
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -152,19 +172,21 @@ document.addEventListener('DOMContentLoaded', function() {
         div.dataset.username = msg.username;
         div.dataset.text = msg.text || '';
         
-        // লং প্রেস টাইমার
+        // লং প্রেস টাইমার (শুধু নিজের মেসেজের জন্য)
         let pressTimer;
         const longPressDuration = 500;
         
-        div.addEventListener('mousedown', startPress);
-        div.addEventListener('touchstart', startPress, { passive: true });
-        div.addEventListener('mouseup', cancelPress);
-        div.addEventListener('touchend', cancelPress);
-        div.addEventListener('mouseleave', cancelPress);
-        div.addEventListener('touchcancel', cancelPress);
+        if (isOwn) {
+            div.addEventListener('mousedown', startPress);
+            div.addEventListener('touchstart', startPress, { passive: true });
+            div.addEventListener('mouseup', cancelPress);
+            div.addEventListener('touchend', cancelPress);
+            div.addEventListener('mouseleave', cancelPress);
+            div.addEventListener('touchcancel', cancelPress);
+        }
         
         function startPress(e) {
-            if (isOwn && isWithin20Minutes(msg.time)) {
+            if (isWithin20Minutes(msg.time)) {
                 pressTimer = setTimeout(() => {
                     showEditMenu(div, msg);
                 }, longPressDuration);
@@ -254,129 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // রিয়েকশন দেখানোর ফাংশন
-        function showReactions(element, messageId) {
-            removeExistingReactionMenu();
-            
-            const menu = document.createElement('div');
-            menu.className = 'reaction-menu';
-            menu.innerHTML = `
-                <div class="reaction-item" data-emoji="❤️">❤️</div>
-                <div class="reaction-item" data-emoji="👍">👍</div>
-                <div class="reaction-item" data-emoji="😂">😂</div>
-                <div class="reaction-item" data-emoji="😮">😮</div>
-                <div class="reaction-item" data-emoji="😢">😢</div>
-                <div class="reaction-item" data-emoji="😡">😡</div>
-            `;
-            
-            const rect = element.getBoundingClientRect();
-            const menuWidth = 240;
-            const menuHeight = 44;
-            
-            let left = rect.left + (rect.width / 2);
-            let top = rect.top - menuHeight - 5;
-            
-            if (top < 5) {
-                top = rect.bottom + 5;
-            }
-            
-            if (left - menuWidth/2 < 5) {
-                left = menuWidth/2 + 5;
-            }
-            if (left + menuWidth/2 > window.innerWidth - 5) {
-                left = window.innerWidth - menuWidth/2 - 5;
-            }
-            
-            menu.style.position = 'fixed';
-            menu.style.left = `${left}px`;
-            menu.style.top = `${top}px`;
-            menu.style.transform = 'translateX(-50%)';
-            
-            menu.querySelectorAll('.reaction-item').forEach(item => {
-                item.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const emoji = item.dataset.emoji;
-                    await addReaction(messageId, emoji);
-                    menu.remove();
-                });
-                
-                item.addEventListener('touchstart', async (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const emoji = item.dataset.emoji;
-                    await addReaction(messageId, emoji);
-                    menu.remove();
-                }, { passive: false });
-            });
-            
-            document.body.appendChild(menu);
-            
-            setTimeout(() => {
-                document.addEventListener('click', function closeMenu(e) {
-                    if (!menu.contains(e.target) && e.target !== element && !e.target.classList.contains('reaction-badge')) {
-                        menu.remove();
-                        document.removeEventListener('click', closeMenu);
-                    }
-                });
-                
-                document.addEventListener('touchstart', function closeMenu(e) {
-                    if (!menu.contains(e.target) && e.target !== element && !e.target.classList.contains('reaction-badge')) {
-                        menu.remove();
-                        document.removeEventListener('touchstart', closeMenu);
-                    }
-                }, { passive: false });
-            }, 100);
-        }
-        
-        function removeExistingReactionMenu() {
-            const oldMenu = document.querySelector('.reaction-menu');
-            if (oldMenu) oldMenu.remove();
-        }
-        
-        // রিয়েকশন যোগ/আপডেট/রিমুভ ফাংশন
-        async function addReaction(messageId, emoji) {
-            try {
-                // Check if user already reacted
-                const { data: existing } = await supabase
-                    .from('reactions')
-                    .select('emoji')
-                    .eq('message_id', messageId)
-                    .eq('username', currentUser)
-                    .maybeSingle();
-                
-                if (existing) {
-                    if (existing.emoji === emoji) {
-                        // Same emoji - remove it
-                        await supabase
-                            .from('reactions')
-                            .delete()
-                            .eq('message_id', messageId)
-                            .eq('username', currentUser);
-                    } else {
-                        // Different emoji - update it
-                        await supabase
-                            .from('reactions')
-                            .update({ emoji: emoji })
-                            .eq('message_id', messageId)
-                            .eq('username', currentUser);
-                    }
-                } else {
-                    // New reaction
-                    await supabase
-                        .from('reactions')
-                        .insert({ 
-                            message_id: messageId, 
-                            username: currentUser, 
-                            emoji: emoji 
-                        });
-                }
-            } catch (error) {
-                console.error('Error adding reaction:', error);
-            }
-        }
-        
-        // Message content build
+        // মেসেজ কন্টেন্ট বিল্ড - লিংক ফরম্যাটিং সহ
         let content = `<strong style="color:${colors[msg.username] || '#fff'};">${msg.username}</strong><br>`;
         
         if (msg.image_url) {
@@ -384,110 +284,21 @@ document.addEventListener('DOMContentLoaded', function() {
             content += `<img src="${msg.image_url}" style="width:100%; max-width:320px; max-height:400px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.3); cursor:pointer; display:block;" onclick="window.open(this.src)">`;
             content += `</div>`;
             if (msg.text) {
-                content += `<div style="margin-top:5px; background-color:${isOwn ? '#2563eb' : colors[msg.username] || '#334155'}; color:white; padding:8px 12px; border-radius:14px; display:inline-block;">${msg.text}</div>`;
+                content += `<div style="margin-top:5px;">${formatMessageText(msg.text)}</div>`;
             }
         } else {
-            content += msg.text;
+            content += formatMessageText(msg.text);
         }
         
         if (msg.edited) {
             content += ` <span class="edited-tag">(edited)</span>`;
         }
         
-        content += `<div class="reactions-container" id="reactions-${msg.id}"></div>`;
         content += `<div class="time">${new Date(msg.time).toLocaleTimeString()}</div>`;
         
         div.innerHTML = content;
-        
-        // Reaction button
-        const reactionBtn = document.createElement('div');
-        reactionBtn.className = 'reaction-btn';
-        reactionBtn.innerHTML = '😊';
-        reactionBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            showReactions(div, msg.id);
-        });
-        reactionBtn.addEventListener('touchstart', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            showReactions(div, msg.id);
-        }, { passive: false });
-        div.appendChild(reactionBtn);
-        
         chatContainer.appendChild(div);
-        
-        // Load existing reactions
-        loadReactions(msg.id);
-        
         chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-    
-    // Load reactions function
-    async function loadReactions(messageId) {
-        try {
-            const { data } = await supabase
-                .from('reactions')
-                .select('username, emoji')
-                .eq('message_id', messageId);
-            
-            const reactionsContainer = document.getElementById(`reactions-${messageId}`);
-            if (!reactionsContainer) return;
-            
-            if (data && data.length > 0) {
-                // Group by emoji and count
-                const reactionMap = new Map();
-                data.forEach(r => {
-                    if (!reactionMap.has(r.emoji)) {
-                        reactionMap.set(r.emoji, {
-                            count: 0,
-                            users: []
-                        });
-                    }
-                    const item = reactionMap.get(r.emoji);
-                    item.count++;
-                    item.users.push(r.username);
-                });
-                
-                let html = '';
-                for (const [emoji, info] of reactionMap.entries()) {
-                    const isOwn = info.users.includes(currentUser);
-                    html += `<span class="reaction-badge ${isOwn ? 'own-reaction' : ''}" data-message-id="${messageId}" data-emoji="${emoji}">${emoji} <span class="count">${info.count}</span></span>`;
-                }
-                reactionsContainer.innerHTML = html;
-                
-                // Add click events to reaction badges
-                reactionsContainer.querySelectorAll('.reaction-badge').forEach(badge => {
-                    badge.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const msgId = badge.dataset.messageId;
-                        const emoji = badge.dataset.emoji;
-                        
-                        // Toggle reaction
-                        addReaction(msgId, emoji).then(() => {
-                            loadReactions(msgId);
-                        });
-                    });
-                    
-                    badge.addEventListener('touchstart', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const msgId = badge.dataset.messageId;
-                        const emoji = badge.dataset.emoji;
-                        
-                        // Toggle reaction
-                        addReaction(msgId, emoji).then(() => {
-                            loadReactions(msgId);
-                        });
-                    }, { passive: false });
-                });
-            } else {
-                reactionsContainer.innerHTML = '';
-            }
-        } catch (error) {
-            console.error('Error loading reactions:', error);
-        }
     }
     
     async function loadMessages() {
@@ -637,7 +448,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if(data) data.forEach(addStatus);
         
         lastSeenStatusTime = new Date().toISOString();
-        newStatusAvailable = false;
         statusDot.style.display = 'none';
         statusViewBtn.classList.remove('new-status-animation');
     }
@@ -694,7 +504,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         addStatus(payload.new);
                     } 
                     else if(payload.new.username !== currentUser) {
-                        newStatusAvailable = true;
                         statusDot.style.display = 'block';
                         statusViewBtn.classList.add('new-status-animation');
                     }
@@ -723,22 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }, async () => {
                 if(currentUser) {
                     await displayOnlineUsers();
-                }
-            })
-            .subscribe();
-    }
-    
-    function listenToReactions() {
-        supabase
-            .channel('reactions-channel')
-            .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
-                table: 'reactions' 
-            }, payload => {
-                if(currentUser) {
-                    const messageId = payload.new?.message_id || payload.old?.message_id;
-                    loadReactions(messageId);
                 }
             })
             .subscribe();
@@ -778,7 +571,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if(confirm('Delete ALL data?')) {
             await supabase.from('messages').delete().gte('id', 0);
             await supabase.from('statuses').delete().gte('id', 0);
-            await supabase.from('reactions').delete().gte('id', 0);
             chatContainer.innerHTML = '';
             statusContainer.innerHTML = '';
             checkAnyStatus();
@@ -793,7 +585,6 @@ document.addEventListener('DOMContentLoaded', function() {
         listenToMessages();
         listenToStatuses();
         listenToOnlineUsers();
-        listenToReactions();
         
         imageInput.addEventListener("change", handleImageUpload);
         statusInput.addEventListener("change", handleStatusUpload);
