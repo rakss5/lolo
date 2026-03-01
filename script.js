@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI - রিয়েকশন সহ
+    // ADD MESSAGE TO UI - রিয়েকশন সহ (সংশোধিত)
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -254,12 +254,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // রিয়েকশন দেখানোর ফাংশন
+        // রিয়েকশন দেখানোর ফাংশন - পজিশন ঠিক করা
         function showReactions(element, messageId) {
             removeExistingReactionMenu();
             
             const menu = document.createElement('div');
             menu.className = 'reaction-menu';
+            menu.id = `reaction-menu-${messageId}`;
             menu.innerHTML = `
                 <div class="reaction-item" data-emoji="❤️">❤️</div>
                 <div class="reaction-item" data-emoji="👍">👍</div>
@@ -270,13 +271,31 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             
             const rect = element.getBoundingClientRect();
+            const menuWidth = 280;
+            const menuHeight = 60;
+            
+            let left = rect.left + (rect.width / 2);
+            let top = rect.top - menuHeight - 10;
+            
+            if (top < 10) {
+                top = rect.bottom + 10;
+            }
+            
+            if (left - menuWidth/2 < 10) {
+                left = menuWidth/2 + 10;
+            }
+            if (left + menuWidth/2 > window.innerWidth - 10) {
+                left = window.innerWidth - menuWidth/2 - 10;
+            }
+            
             menu.style.position = 'fixed';
-            menu.style.left = `${rect.left + (rect.width / 2)}px`;
-            menu.style.bottom = `${window.innerHeight - rect.top + 10}px`;
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
             menu.style.transform = 'translateX(-50%)';
             
             menu.querySelectorAll('.reaction-item').forEach(item => {
-                item.addEventListener('click', async () => {
+                item.addEventListener('click', async (e) => {
+                    e.stopPropagation();
                     const emoji = item.dataset.emoji;
                     await addReaction(messageId, emoji);
                     menu.remove();
@@ -287,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             setTimeout(() => {
                 document.addEventListener('click', function closeMenu(e) {
-                    if (!menu.contains(e.target) && e.target !== element) {
+                    if (!menu.contains(e.target) && e.target !== element && !e.target.classList.contains('reaction-badge')) {
                         menu.remove();
                         document.removeEventListener('click', closeMenu);
                     }
@@ -300,26 +319,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (oldMenu) oldMenu.remove();
         }
         
-        // রিয়েকশন যোগ করার ফাংশন
+        // রিয়েকশন যোগ/আপডেট/রিমুভ ফাংশন
         async function addReaction(messageId, emoji) {
-            // চেক করা যে আগে এই ইউজার এই মেসেজে রিয়েক্ট করেছে কিনা
             const { data: existing } = await supabase
                 .from('reactions')
                 .select('emoji')
                 .eq('message_id', messageId)
                 .eq('username', currentUser)
-                .single();
+                .maybeSingle();
             
             if (existing) {
                 if (existing.emoji === emoji) {
-                    // একই ইমোজি - ডিলিট করো (আনরিয়েক্ট)
                     await supabase
                         .from('reactions')
                         .delete()
                         .eq('message_id', messageId)
                         .eq('username', currentUser);
                 } else {
-                    // ভিন্ন ইমোজি - আপডেট করো
                     await supabase
                         .from('reactions')
                         .update({ emoji: emoji })
@@ -327,7 +343,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         .eq('username', currentUser);
                 }
             } else {
-                // নতুন রিয়েকশন
                 await supabase
                     .from('reactions')
                     .insert({ 
@@ -356,14 +371,11 @@ document.addEventListener('DOMContentLoaded', function() {
             content += ` <span class="edited-tag">(edited)</span>`;
         }
         
-        // রিয়েকশন কন্টেইনার
         content += `<div class="reactions-container" id="reactions-${msg.id}"></div>`;
-        
         content += `<div class="time">${new Date(msg.time).toLocaleTimeString()}</div>`;
         
         div.innerHTML = content;
         
-        // রিয়েকশন বাটন
         const reactionBtn = document.createElement('div');
         reactionBtn.className = 'reaction-btn';
         reactionBtn.innerHTML = '😊';
@@ -375,13 +387,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         chatContainer.appendChild(div);
         
-        // রিয়েকশন লোড করা
         loadReactions(msg.id);
         
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
-    // রিয়েকশন লোড করার ফাংশন
+    // রিয়েকশন লোড করার ফাংশন - ইমোজি ক্লিক ইভেন্ট সহ
     async function loadReactions(messageId) {
         const { data } = await supabase
             .from('reactions')
@@ -391,7 +402,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data && data.length > 0) {
             const reactionsContainer = document.getElementById(`reactions-${messageId}`);
             if (reactionsContainer) {
-                // ইমোজি গ্রুপ করা
                 const reactionCount = {};
                 data.forEach(r => {
                     reactionCount[r.emoji] = (reactionCount[r.emoji] || 0) + 1;
@@ -399,10 +409,62 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 let html = '';
                 for (const [emoji, count] of Object.entries(reactionCount)) {
-                    html += `<span class="reaction-badge" onclick="document.getElementById('reaction-menu-${messageId}').style.display='flex'">${emoji} <span class="count">${count}</span></span>`;
+                    html += `<span class="reaction-badge" data-message-id="${messageId}" data-emoji="${emoji}">${emoji} <span class="count">${count}</span></span>`;
                 }
                 reactionsContainer.innerHTML = html;
+                
+                reactionsContainer.querySelectorAll('.reaction-badge').forEach(badge => {
+                    badge.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const msgId = badge.dataset.messageId;
+                        const emoji = badge.dataset.emoji;
+                        
+                        const messageElement = document.querySelector(`.msg[data-id="${msgId}"]`);
+                        if (messageElement) {
+                            checkAndToggleReaction(msgId, emoji);
+                        }
+                    });
+                });
             }
+        } else {
+            const reactionsContainer = document.getElementById(`reactions-${messageId}`);
+            if (reactionsContainer) {
+                reactionsContainer.innerHTML = '';
+            }
+        }
+    }
+    
+    // ইমোজি ক্লিক করলে টগল করার ফাংশন
+    async function checkAndToggleReaction(messageId, emoji) {
+        const { data: userReaction } = await supabase
+            .from('reactions')
+            .select('emoji')
+            .eq('message_id', messageId)
+            .eq('username', currentUser)
+            .maybeSingle();
+        
+        if (userReaction) {
+            if (userReaction.emoji === emoji) {
+                await supabase
+                    .from('reactions')
+                    .delete()
+                    .eq('message_id', messageId)
+                    .eq('username', currentUser);
+            } else {
+                await supabase
+                    .from('reactions')
+                    .update({ emoji: emoji })
+                    .eq('message_id', messageId)
+                    .eq('username', currentUser);
+            }
+        } else {
+            await supabase
+                .from('reactions')
+                .insert({ 
+                    message_id: messageId, 
+                    username: currentUser, 
+                    emoji: emoji 
+                });
         }
     }
     
@@ -644,7 +706,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .subscribe();
     }
     
-    // reactions টেবিলের জন্য রিয়েলটাইম লিসেনার
     function listenToReactions() {
         supabase
             .channel('reactions-channel')
@@ -654,7 +715,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 table: 'reactions' 
             }, payload => {
                 if(currentUser) {
-                    // যেই মেসেজে রিয়েকশন হয়েছে, সেটা আপডেট করো
                     const messageId = payload.new?.message_id || payload.old?.message_id;
                     loadReactions(messageId);
                 }
@@ -711,7 +771,7 @@ document.addEventListener('DOMContentLoaded', function() {
         listenToMessages();
         listenToStatuses();
         listenToOnlineUsers();
-        listenToReactions(); // নতুন লিসেনার
+        listenToReactions();
         
         imageInput.addEventListener("change", handleImageUpload);
         statusInput.addEventListener("change", handleStatusUpload);
