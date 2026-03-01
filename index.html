@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>iii</title>
+<title>L iii</title>
 
 <style>
 *{box-sizing:border-box}
@@ -51,6 +51,11 @@ body{
     border-radius:14px;
     font-size:15px;
     word-wrap:break-word;
+    position: relative;
+    cursor: pointer;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .msg:first-child {
@@ -101,7 +106,14 @@ body{
     text-align:right;
 }
 
-/* ====== STATUS - বড় সাইজ ====== */
+.edited-tag {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-left: 5px;
+    font-style: italic;
+}
+
+/* ====== STATUS ====== */
 
 .status-item {
     background: #1e293b;
@@ -149,6 +161,54 @@ body{
     border-radius: 20px;
     background: #000;
 }
+
+/* ====== MESSAGE MENU ====== */
+
+.message-menu {
+    background: #1e293b;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    padding: 8px 0;
+    min-width: 180px;
+    z-index: 1000;
+    border: 1px solid #334155;
+    animation: fadeIn 0.2s ease;
+}
+
+.message-menu .menu-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    color: white;
+    font-size: 14px;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.message-menu .menu-item:hover {
+    background: #334155;
+}
+
+.message-menu .menu-item.edit-item {
+    border-bottom: 1px solid #334155;
+}
+
+.message-menu .menu-item.delete-item {
+    color: #ef4444;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 /* ===== INPUT AREA ===== */
 
 #input-area{
@@ -249,10 +309,9 @@ button{
 #statusViewBtn {
     background: #8b5cf6;
     position: relative;
-    display: none;  /* ডিফল্ট লুকানো */
+    display: none;
 }
 
-/* নতুন স্ট্যাটাসের জন্য অ্যানিমেশন */
 @keyframes newStatusPulse {
     0% {
         transform: scale(1);
@@ -273,7 +332,6 @@ button{
     animation: newStatusPulse 1.5s infinite;
 }
 
-/* রেড ডট নোটিফিকেশন (নতুন স্ট্যাটাসের জন্য) */
 .status-dot {
     position: absolute;
     top: -5px;
