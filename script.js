@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI - মোবাইল ফ্রেন্ডলি
+    // ADD MESSAGE TO UI
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -191,10 +191,10 @@ document.addEventListener('DOMContentLoaded', function() {
             menu.className = 'message-menu';
             menu.innerHTML = `
                 <div class="menu-item edit-item">
-                    <span>✏️ Edit Message</span>
+                    <span>✏️ Edit</span>
                 </div>
                 <div class="menu-item delete-item">
-                    <span>🗑️ Delete Message</span>
+                    <span>🗑️ Delete</span>
                 </div>
             `;
             
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         async function editMessage(message) {
-            const newText = prompt('Edit your message:', message.text);
+            const newText = prompt('Edit message:', message.text);
             if (newText && newText !== message.text) {
                 await supabase
                     .from('messages')
@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         async function deleteMessage(messageId) {
-            if (confirm('Delete this message?')) {
+            if (confirm('Delete message?')) {
                 await supabase
                     .from('messages')
                     .delete()
@@ -260,7 +260,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const menu = document.createElement('div');
             menu.className = 'reaction-menu';
-            menu.id = `reaction-menu-${messageId}`;
             menu.innerHTML = `
                 <div class="reaction-item" data-emoji="❤️">❤️</div>
                 <div class="reaction-item" data-emoji="👍">👍</div>
@@ -271,21 +270,21 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             
             const rect = element.getBoundingClientRect();
-            const menuWidth = 360;
-            const menuHeight = 76;
+            const menuWidth = 240;
+            const menuHeight = 44;
             
             let left = rect.left + (rect.width / 2);
-            let top = rect.top - menuHeight - 10;
+            let top = rect.top - menuHeight - 5;
             
-            if (top < 10) {
-                top = rect.bottom + 10;
+            if (top < 5) {
+                top = rect.bottom + 5;
             }
             
-            if (left - menuWidth/2 < 10) {
-                left = menuWidth/2 + 10;
+            if (left - menuWidth/2 < 5) {
+                left = menuWidth/2 + 5;
             }
-            if (left + menuWidth/2 > window.innerWidth - 10) {
-                left = window.innerWidth - menuWidth/2 - 10;
+            if (left + menuWidth/2 > window.innerWidth - 5) {
+                left = window.innerWidth - menuWidth/2 - 5;
             }
             
             menu.style.position = 'fixed';
@@ -338,6 +337,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // রিয়েকশন যোগ/আপডেট/রিমুভ ফাংশন
         async function addReaction(messageId, emoji) {
             try {
+                // Check if user already reacted
                 const { data: existing } = await supabase
                     .from('reactions')
                     .select('emoji')
@@ -347,12 +347,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (existing) {
                     if (existing.emoji === emoji) {
+                        // Same emoji - remove it
                         await supabase
                             .from('reactions')
                             .delete()
                             .eq('message_id', messageId)
                             .eq('username', currentUser);
                     } else {
+                        // Different emoji - update it
                         await supabase
                             .from('reactions')
                             .update({ emoji: emoji })
@@ -360,6 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             .eq('username', currentUser);
                     }
                 } else {
+                    // New reaction
                     await supabase
                         .from('reactions')
                         .insert({ 
@@ -373,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // মেসেজ কন্টেন্ট বিল্ড
+        // Message content build
         let content = `<strong style="color:${colors[msg.username] || '#fff'};">${msg.username}</strong><br>`;
         
         if (msg.image_url) {
@@ -396,6 +399,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         div.innerHTML = content;
         
+        // Reaction button
         const reactionBtn = document.createElement('div');
         reactionBtn.className = 'reaction-btn';
         reactionBtn.innerHTML = '😊';
@@ -413,12 +417,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         chatContainer.appendChild(div);
         
+        // Load existing reactions
         loadReactions(msg.id);
         
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
-    // রিয়েকশন লোড করার ফাংশন
+    // Load reactions function
     async function loadReactions(messageId) {
         try {
             const { data } = await supabase
@@ -430,25 +435,39 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!reactionsContainer) return;
             
             if (data && data.length > 0) {
-                const reactionCount = {};
+                // Group by emoji and count
+                const reactionMap = new Map();
                 data.forEach(r => {
-                    reactionCount[r.emoji] = (reactionCount[r.emoji] || 0) + 1;
+                    if (!reactionMap.has(r.emoji)) {
+                        reactionMap.set(r.emoji, {
+                            count: 0,
+                            users: []
+                        });
+                    }
+                    const item = reactionMap.get(r.emoji);
+                    item.count++;
+                    item.users.push(r.username);
                 });
                 
                 let html = '';
-                for (const [emoji, count] of Object.entries(reactionCount)) {
-                    const isOwn = data.some(r => r.username === currentUser && r.emoji === emoji);
-                    html += `<span class="reaction-badge ${isOwn ? 'own-reaction' : ''}" data-message-id="${messageId}" data-emoji="${emoji}">${emoji} <span class="count">${count}</span></span>`;
+                for (const [emoji, info] of reactionMap.entries()) {
+                    const isOwn = info.users.includes(currentUser);
+                    html += `<span class="reaction-badge ${isOwn ? 'own-reaction' : ''}" data-message-id="${messageId}" data-emoji="${emoji}">${emoji} <span class="count">${info.count}</span></span>`;
                 }
                 reactionsContainer.innerHTML = html;
                 
+                // Add click events to reaction badges
                 reactionsContainer.querySelectorAll('.reaction-badge').forEach(badge => {
                     badge.addEventListener('click', (e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         const msgId = badge.dataset.messageId;
                         const emoji = badge.dataset.emoji;
-                        checkAndToggleReaction(msgId, emoji);
+                        
+                        // Toggle reaction
+                        addReaction(msgId, emoji).then(() => {
+                            loadReactions(msgId);
+                        });
                     });
                     
                     badge.addEventListener('touchstart', (e) => {
@@ -456,7 +475,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         e.preventDefault();
                         const msgId = badge.dataset.messageId;
                         const emoji = badge.dataset.emoji;
-                        checkAndToggleReaction(msgId, emoji);
+                        
+                        // Toggle reaction
+                        addReaction(msgId, emoji).then(() => {
+                            loadReactions(msgId);
+                        });
                     }, { passive: false });
                 });
             } else {
@@ -464,44 +487,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error loading reactions:', error);
-        }
-    }
-    
-    // ইমোজি ক্লিক করলে টগল করার ফাংশন
-    async function checkAndToggleReaction(messageId, emoji) {
-        try {
-            const { data: userReaction } = await supabase
-                .from('reactions')
-                .select('emoji')
-                .eq('message_id', messageId)
-                .eq('username', currentUser)
-                .maybeSingle();
-            
-            if (userReaction) {
-                if (userReaction.emoji === emoji) {
-                    await supabase
-                        .from('reactions')
-                        .delete()
-                        .eq('message_id', messageId)
-                        .eq('username', currentUser);
-                } else {
-                    await supabase
-                        .from('reactions')
-                        .update({ emoji: emoji })
-                        .eq('message_id', messageId)
-                        .eq('username', currentUser);
-                }
-            } else {
-                await supabase
-                    .from('reactions')
-                    .insert({ 
-                        message_id: messageId, 
-                        username: currentUser, 
-                        emoji: emoji 
-                    });
-            }
-        } catch (error) {
-            console.error('Error toggling reaction:', error);
         }
     }
     
