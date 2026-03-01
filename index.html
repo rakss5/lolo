@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>iii</title>
+<title>ii</title>
 
 <style>
 *{box-sizing:border-box}
@@ -232,6 +232,7 @@ body{
     z-index: 100;
 }
 
+/* ইনপুট ফিল্ড - অটোফিল বন্ধ */
 #msg{
     flex:1;
     padding:12px;
@@ -244,8 +245,37 @@ body{
     color:white;
 }
 
+/* মোবাইলের জন্য অপ্টিমাইজেশন */
+@media (max-width: 768px) {
+    #input-area {
+        padding: 5px;
+        gap: 4px;
+    }
+    
+    #msg {
+        padding: 10px;
+        font-size: 14px;
+    }
+    
+    .sendBtn, .imageBtn, .statusUploadBtn {
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+    }
+}
+
 #msg::placeholder {
     color: #64748b;
+}
+
+/* অটোফিল স্টাইল ওভাররাইড */
+#msg:-webkit-autofill,
+#msg:-webkit-autofill:hover,
+#msg:-webkit-autofill:focus,
+#msg:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
+    -webkit-text-fill-color: white !important;
+    caret-color: white;
 }
 
 .sendBtn,.imageBtn,.statusUploadBtn{
@@ -385,9 +415,16 @@ button:active {
     <div id="statusContainer"></div>
   </div>
 
-  <!-- Input Area -->
+  <!-- Input Area - ফিক্সড -->
   <div id="input-area">
-    <input id="msg" placeholder="Type message" autocomplete="off">
+    <input id="msg" 
+           placeholder="Type message or paste YouTube link" 
+           autocomplete="off"
+           autocorrect="off"
+           autocapitalize="off"
+           spellcheck="false"
+           type="text"
+           inputmode="text">
     <button class="sendBtn" id="sendBtn">📤</button>
 
     <label for="imageInput">
