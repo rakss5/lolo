@@ -1,3 +1,4 @@
+// script.js
 document.addEventListener('DOMContentLoaded', function() {
     // Your exact Supabase configuration
     const SUPABASE_URL = 'https://hhbbwkeazqnyhdcfyqfg.supabase.co';
@@ -48,10 +49,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .order('time', { ascending: false });
         
         if(data && data.length > 0) {
-            // কোনো স্ট্যাটাস আছে - বাটন দেখাও
             statusViewBtn.style.display = 'inline-block';
             
-            // নতুন স্ট্যাটাস চেক (যা ইউজার দেখেনি)
             if(lastSeenStatusTime) {
                 const newStatuses = data.filter(s => new Date(s.time) > new Date(lastSeenStatusTime));
                 if(newStatuses.length > 0 && !showingStatus) {
@@ -65,7 +64,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         } else {
-            // কোনো স্ট্যাটাস নেই - বাটন লুকাও
             statusViewBtn.style.display = 'none';
             statusDot.style.display = 'none';
             statusViewBtn.classList.remove('new-status-animation');
@@ -117,13 +115,11 @@ document.addEventListener('DOMContentLoaded', function() {
             chatContainer.innerHTML = '';
             loadMessages();
             await displayOnlineUsers();
-            
-            // স্ট্যাটাস চেক
             await checkAnyStatus();
         }
     });
     
-    // ========== মেসেজ ==========
+    // ========== মেসেজ ফাংশন ==========
     
     async function send() {
         if(!currentUser) {
@@ -135,7 +131,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const message = {
             username: currentUser,
             text: msgInput.value.trim(),
-            time: new Date().toISOString()
+            time: new Date().toISOString(),
+            edited: false
         };
         
         const { error } = await supabase.from('messages').insert([message]);
@@ -146,21 +143,133 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // ADD MESSAGE TO UI - লং প্রেস সহ
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
+        div.dataset.id = msg.id;
+        div.dataset.time = msg.time;
+        div.dataset.username = msg.username;
+        div.dataset.text = msg.text || '';
         
+        // লং প্রেস টাইমার
+        let pressTimer;
+        const longPressDuration = 500;
+        
+        div.addEventListener('mousedown', startPress);
+        div.addEventListener('touchstart', startPress, { passive: true });
+        div.addEventListener('mouseup', cancelPress);
+        div.addEventListener('touchend', cancelPress);
+        div.addEventListener('mouseleave', cancelPress);
+        div.addEventListener('touchcancel', cancelPress);
+        
+        function startPress(e) {
+            if (isOwn && isWithin20Minutes(msg.time)) {
+                pressTimer = setTimeout(() => {
+                    showEditMenu(div, msg);
+                }, longPressDuration);
+            }
+        }
+        
+        function cancelPress() {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+            }
+        }
+        
+        function isWithin20Minutes(messageTime) {
+            const messageDate = new Date(messageTime);
+            const now = new Date();
+            const diffMinutes = (now - messageDate) / (1000 * 60);
+            return diffMinutes <= 20;
+        }
+        
+        function showEditMenu(element, message) {
+            removeExistingMenu();
+            
+            const menu = document.createElement('div');
+            menu.className = 'message-menu';
+            menu.innerHTML = `
+                <div class="menu-item edit-item">
+                    <span>✏️ Edit Message</span>
+                </div>
+                <div class="menu-item delete-item">
+                    <span>🗑️ Delete Message</span>
+                </div>
+            `;
+            
+            const rect = element.getBoundingClientRect();
+            menu.style.position = 'fixed';
+            menu.style.left = `${rect.left + (rect.width / 2)}px`;
+            menu.style.top = `${rect.top - 10}px`;
+            menu.style.transform = 'translate(-50%, -100%)';
+            
+            menu.querySelector('.edit-item').addEventListener('click', () => {
+                editMessage(message);
+                menu.remove();
+            });
+            
+            menu.querySelector('.delete-item').addEventListener('click', () => {
+                deleteMessage(message.id);
+                menu.remove();
+            });
+            
+            document.body.appendChild(menu);
+            
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu(e) {
+                    if (!menu.contains(e.target) && e.target !== element) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+            }, 100);
+        }
+        
+        function removeExistingMenu() {
+            const oldMenu = document.querySelector('.message-menu');
+            if (oldMenu) oldMenu.remove();
+        }
+        
+        async function editMessage(message) {
+            const newText = prompt('Edit your message:', message.text);
+            if (newText && newText !== message.text) {
+                await supabase
+                    .from('messages')
+                    .update({ 
+                        text: newText, 
+                        edited: true, 
+                        edited_at: new Date().toISOString() 
+                    })
+                    .eq('id', message.id);
+            }
+        }
+        
+        async function deleteMessage(messageId) {
+            if (confirm('Delete this message?')) {
+                await supabase
+                    .from('messages')
+                    .delete()
+                    .eq('id', messageId);
+            }
+        }
+        
+        // মেসেজ কন্টেন্ট বিল্ড
         let content = `<strong style="color:${colors[msg.username] || '#fff'};">${msg.username}</strong><br>`;
         
-        if(msg.image_url) {
+        if (msg.image_url) {
             content += `<div style="margin:5px 0;">`;
             content += `<img src="${msg.image_url}" style="width:100%; max-width:320px; max-height:400px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.3); cursor:pointer; display:block;" onclick="window.open(this.src)">`;
             content += `</div>`;
-            if(msg.text) {
+            if (msg.text) {
                 content += `<div style="margin-top:5px; background-color:${isOwn ? '#2563eb' : colors[msg.username] || '#334155'}; color:white; padding:8px 12px; border-radius:14px; display:inline-block;">${msg.text}</div>`;
             }
         } else {
             content += msg.text;
+        }
+        
+        if (msg.edited) {
+            content += ` <span class="edited-tag">(edited)</span>`;
         }
         
         content += `<div class="time">${new Date(msg.time).toLocaleTimeString()}</div>`;
@@ -223,7 +332,8 @@ document.addEventListener('DOMContentLoaded', function() {
             username: currentUser,
             text: msgInput.value.trim() || '',
             image_url: publicUrl,
-            time: new Date().toISOString()
+            time: new Date().toISOString(),
+            edited: false
         };
         
         await supabase.from('messages').insert([message]);
@@ -275,8 +385,6 @@ document.addEventListener('DOMContentLoaded', function() {
         statusInput.value = '';
         alert('Status uploaded!');
         await updateMyOnlineStatus();
-        
-        // স্ট্যাটাস আপলোডের পর চেক
         setTimeout(checkAnyStatus, 1000);
     }
     
@@ -317,7 +425,6 @@ document.addEventListener('DOMContentLoaded', function() {
         statusContainer.innerHTML = '';
         if(data) data.forEach(addStatus);
         
-        // স্ট্যাটাস দেখার সময় রেকর্ড করি
         lastSeenStatusTime = new Date().toISOString();
         newStatusAvailable = false;
         statusDot.style.display = 'none';
@@ -334,8 +441,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 schema: 'public', 
                 table: 'messages' 
             }, payload => {
-                if(currentUser && !showingStatus) {
+                if(currentUser) {
                     addMessage(payload.new, payload.new.username === currentUser);
+                }
+            })
+            .on('postgres_changes', { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'messages' 
+            }, payload => {
+                if(currentUser) {
+                    // পুরো চ্যাট রিলোড না করে শুধু ঐ মেসেজ আপডেট করা ভালো
+                    // তবে সহজ উপায় হল পুরো চ্যাট রিলোড
+                    loadMessages();
                 }
             })
             .on('postgres_changes', { 
@@ -343,9 +461,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 schema: 'public', 
                 table: 'messages' 
             }, () => {
-                // When messages are deleted, clear the chat container for all users
-                if(currentUser && !showingStatus) {
-                    chatContainer.innerHTML = '';
+                if(currentUser) {
+                    loadMessages();
                 }
             })
             .subscribe();
@@ -362,14 +479,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('New status:', payload.new);
                 
                 if(currentUser) {
-                    // বাটন দেখাও (যেহেতু স্ট্যাটাস আছে)
                     statusViewBtn.style.display = 'inline-block';
                     
-                    // যদি স্ট্যাটাস ভিউ ওপেন থাকে তাহলে সরাসরি দেখাও
                     if(showingStatus) {
                         addStatus(payload.new);
                     } 
-                    // যদি স্ট্যাটাস ভিউ বন্ধ থাকে এবং এটা অন্য ইউজারের স্ট্যাটাস হয়
                     else if(payload.new.username !== currentUser) {
                         newStatusAvailable = true;
                         statusDot.style.display = 'block';
@@ -382,7 +496,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 schema: 'public', 
                 table: 'statuses' 
             }, () => {
-                // স্ট্যাটাস ডিলিট হলে আবার চেক করি
                 if(currentUser && showingStatus) {
                     loadStatuses();
                 }
@@ -424,11 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
             chatWrap.style.display = "flex";
             statusArea.style.display = "none";
             statusViewBtn.style.background = "#8b5cf6";
-            
-            // Reload messages when coming back to chat
             loadMessages();
-            
-            // Check for new status
             checkAnyStatus();
         }
     }
@@ -442,16 +551,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if(confirm('Delete ALL data?')) {
-            // Delete all messages from database
             await supabase.from('messages').delete().gte('id', 0);
-            // Delete all statuses from database
             await supabase.from('statuses').delete().gte('id', 0);
-            
-            // Clear local containers immediately
             chatContainer.innerHTML = '';
             statusContainer.innerHTML = '';
-            
-            // Update status button visibility
             checkAnyStatus();
         }
     }
@@ -475,7 +578,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 10000);
         
-        // প্রতি মিনিটে স্ট্যাটাস চেক করি (এক্সপায়ারের জন্য)
         setInterval(() => {
             if(currentUser) {
                 checkAnyStatus();
