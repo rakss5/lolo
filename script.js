@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI - রিয়েকশন সহ (সংশোধিত)
+    // ADD MESSAGE TO UI - মোবাইল ফ্রেন্ডলি
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // রিয়েকশন দেখানোর ফাংশন - পজিশন ঠিক করা
+        // রিয়েকশন দেখানোর ফাংশন
         function showReactions(element, messageId) {
             removeExistingReactionMenu();
             
@@ -271,8 +271,8 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             
             const rect = element.getBoundingClientRect();
-            const menuWidth = 280;
-            const menuHeight = 60;
+            const menuWidth = 360;
+            const menuHeight = 76;
             
             let left = rect.left + (rect.width / 2);
             let top = rect.top - menuHeight - 10;
@@ -296,10 +296,19 @@ document.addEventListener('DOMContentLoaded', function() {
             menu.querySelectorAll('.reaction-item').forEach(item => {
                 item.addEventListener('click', async (e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     const emoji = item.dataset.emoji;
                     await addReaction(messageId, emoji);
                     menu.remove();
                 });
+                
+                item.addEventListener('touchstart', async (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const emoji = item.dataset.emoji;
+                    await addReaction(messageId, emoji);
+                    menu.remove();
+                }, { passive: false });
             });
             
             document.body.appendChild(menu);
@@ -311,6 +320,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         document.removeEventListener('click', closeMenu);
                     }
                 });
+                
+                document.addEventListener('touchstart', function closeMenu(e) {
+                    if (!menu.contains(e.target) && e.target !== element && !e.target.classList.contains('reaction-badge')) {
+                        menu.remove();
+                        document.removeEventListener('touchstart', closeMenu);
+                    }
+                }, { passive: false });
             }, 100);
         }
         
@@ -321,35 +337,39 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // রিয়েকশন যোগ/আপডেট/রিমুভ ফাংশন
         async function addReaction(messageId, emoji) {
-            const { data: existing } = await supabase
-                .from('reactions')
-                .select('emoji')
-                .eq('message_id', messageId)
-                .eq('username', currentUser)
-                .maybeSingle();
-            
-            if (existing) {
-                if (existing.emoji === emoji) {
-                    await supabase
-                        .from('reactions')
-                        .delete()
-                        .eq('message_id', messageId)
-                        .eq('username', currentUser);
+            try {
+                const { data: existing } = await supabase
+                    .from('reactions')
+                    .select('emoji')
+                    .eq('message_id', messageId)
+                    .eq('username', currentUser)
+                    .maybeSingle();
+                
+                if (existing) {
+                    if (existing.emoji === emoji) {
+                        await supabase
+                            .from('reactions')
+                            .delete()
+                            .eq('message_id', messageId)
+                            .eq('username', currentUser);
+                    } else {
+                        await supabase
+                            .from('reactions')
+                            .update({ emoji: emoji })
+                            .eq('message_id', messageId)
+                            .eq('username', currentUser);
+                    }
                 } else {
                     await supabase
                         .from('reactions')
-                        .update({ emoji: emoji })
-                        .eq('message_id', messageId)
-                        .eq('username', currentUser);
+                        .insert({ 
+                            message_id: messageId, 
+                            username: currentUser, 
+                            emoji: emoji 
+                        });
                 }
-            } else {
-                await supabase
-                    .from('reactions')
-                    .insert({ 
-                        message_id: messageId, 
-                        username: currentUser, 
-                        emoji: emoji 
-                    });
+            } catch (error) {
+                console.error('Error adding reaction:', error);
             }
         }
         
@@ -381,8 +401,14 @@ document.addEventListener('DOMContentLoaded', function() {
         reactionBtn.innerHTML = '😊';
         reactionBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            e.preventDefault();
             showReactions(div, msg.id);
         });
+        reactionBtn.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            showReactions(div, msg.id);
+        }, { passive: false });
         div.appendChild(reactionBtn);
         
         chatContainer.appendChild(div);
@@ -392,16 +418,18 @@ document.addEventListener('DOMContentLoaded', function() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
-    // রিয়েকশন লোড করার ফাংশন - ইমোজি ক্লিক ইভেন্ট সহ
+    // রিয়েকশন লোড করার ফাংশন
     async function loadReactions(messageId) {
-        const { data } = await supabase
-            .from('reactions')
-            .select('username, emoji')
-            .eq('message_id', messageId);
-        
-        if (data && data.length > 0) {
+        try {
+            const { data } = await supabase
+                .from('reactions')
+                .select('username, emoji')
+                .eq('message_id', messageId);
+            
             const reactionsContainer = document.getElementById(`reactions-${messageId}`);
-            if (reactionsContainer) {
+            if (!reactionsContainer) return;
+            
+            if (data && data.length > 0) {
                 const reactionCount = {};
                 data.forEach(r => {
                     reactionCount[r.emoji] = (reactionCount[r.emoji] || 0) + 1;
@@ -409,62 +437,71 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 let html = '';
                 for (const [emoji, count] of Object.entries(reactionCount)) {
-                    html += `<span class="reaction-badge" data-message-id="${messageId}" data-emoji="${emoji}">${emoji} <span class="count">${count}</span></span>`;
+                    const isOwn = data.some(r => r.username === currentUser && r.emoji === emoji);
+                    html += `<span class="reaction-badge ${isOwn ? 'own-reaction' : ''}" data-message-id="${messageId}" data-emoji="${emoji}">${emoji} <span class="count">${count}</span></span>`;
                 }
                 reactionsContainer.innerHTML = html;
                 
                 reactionsContainer.querySelectorAll('.reaction-badge').forEach(badge => {
                     badge.addEventListener('click', (e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         const msgId = badge.dataset.messageId;
                         const emoji = badge.dataset.emoji;
-                        
-                        const messageElement = document.querySelector(`.msg[data-id="${msgId}"]`);
-                        if (messageElement) {
-                            checkAndToggleReaction(msgId, emoji);
-                        }
+                        checkAndToggleReaction(msgId, emoji);
                     });
+                    
+                    badge.addEventListener('touchstart', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const msgId = badge.dataset.messageId;
+                        const emoji = badge.dataset.emoji;
+                        checkAndToggleReaction(msgId, emoji);
+                    }, { passive: false });
                 });
-            }
-        } else {
-            const reactionsContainer = document.getElementById(`reactions-${messageId}`);
-            if (reactionsContainer) {
+            } else {
                 reactionsContainer.innerHTML = '';
             }
+        } catch (error) {
+            console.error('Error loading reactions:', error);
         }
     }
     
     // ইমোজি ক্লিক করলে টগল করার ফাংশন
     async function checkAndToggleReaction(messageId, emoji) {
-        const { data: userReaction } = await supabase
-            .from('reactions')
-            .select('emoji')
-            .eq('message_id', messageId)
-            .eq('username', currentUser)
-            .maybeSingle();
-        
-        if (userReaction) {
-            if (userReaction.emoji === emoji) {
-                await supabase
-                    .from('reactions')
-                    .delete()
-                    .eq('message_id', messageId)
-                    .eq('username', currentUser);
+        try {
+            const { data: userReaction } = await supabase
+                .from('reactions')
+                .select('emoji')
+                .eq('message_id', messageId)
+                .eq('username', currentUser)
+                .maybeSingle();
+            
+            if (userReaction) {
+                if (userReaction.emoji === emoji) {
+                    await supabase
+                        .from('reactions')
+                        .delete()
+                        .eq('message_id', messageId)
+                        .eq('username', currentUser);
+                } else {
+                    await supabase
+                        .from('reactions')
+                        .update({ emoji: emoji })
+                        .eq('message_id', messageId)
+                        .eq('username', currentUser);
+                }
             } else {
                 await supabase
                     .from('reactions')
-                    .update({ emoji: emoji })
-                    .eq('message_id', messageId)
-                    .eq('username', currentUser);
+                    .insert({ 
+                        message_id: messageId, 
+                        username: currentUser, 
+                        emoji: emoji 
+                    });
             }
-        } else {
-            await supabase
-                .from('reactions')
-                .insert({ 
-                    message_id: messageId, 
-                    username: currentUser, 
-                    emoji: emoji 
-                });
+        } catch (error) {
+            console.error('Error toggling reaction:', error);
         }
     }
     
@@ -638,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 event: 'UPDATE', 
                 schema: 'public', 
                 table: 'messages' 
-            }, payload => {
+            }, () => {
                 if(currentUser) {
                     loadMessages();
                 }
