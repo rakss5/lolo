@@ -1,4 +1,3 @@
-// script.js
 document.addEventListener('DOMContentLoaded', function() {
     // Your exact Supabase configuration
     const SUPABASE_URL = 'https://hhbbwkeazqnyhdcfyqfg.supabase.co';
@@ -325,7 +324,33 @@ document.addEventListener('DOMContentLoaded', function() {
         statusViewBtn.classList.remove('new-status-animation');
     }
     
-    // রিয়েলটাইম স্ট্যাটাস লিসেনার
+    // ========== রিয়েলটাইম লিসেনার ==========
+    
+    function listenToMessages() {
+        supabase
+            .channel('messages-channel')
+            .on('postgres_changes', { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'messages' 
+            }, payload => {
+                if(currentUser && !showingStatus) {
+                    addMessage(payload.new, payload.new.username === currentUser);
+                }
+            })
+            .on('postgres_changes', { 
+                event: 'DELETE', 
+                schema: 'public', 
+                table: 'messages' 
+            }, () => {
+                // When messages are deleted, clear the chat container for all users
+                if(currentUser && !showingStatus) {
+                    chatContainer.innerHTML = '';
+                }
+            })
+            .subscribe();
+    }
+    
     function listenToStatuses() {
         supabase
             .channel('statuses-channel')
@@ -358,10 +383,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 table: 'statuses' 
             }, () => {
                 // স্ট্যাটাস ডিলিট হলে আবার চেক করি
+                if(currentUser && showingStatus) {
+                    loadStatuses();
+                }
                 setTimeout(checkAnyStatus, 1000);
             })
             .subscribe();
     }
+    
+    function listenToOnlineUsers() {
+        supabase
+            .channel('online-users-channel')
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'online_users' 
+            }, async () => {
+                if(currentUser) {
+                    await displayOnlineUsers();
+                }
+            })
+            .subscribe();
+    }
+    
+    // ========== টগল ফাংশন ==========
     
     function toggleStatusView() {
         if(!currentUser) {
@@ -380,7 +425,10 @@ document.addEventListener('DOMContentLoaded', function() {
             statusArea.style.display = "none";
             statusViewBtn.style.background = "#8b5cf6";
             
-            // স্ট্যাটাস ভিউ বন্ধ করলে চেক করি নতুন স্ট্যাটাস আছে কিনা
+            // Reload messages when coming back to chat
+            loadMessages();
+            
+            // Check for new status
             checkAnyStatus();
         }
     }
@@ -394,44 +442,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if(confirm('Delete ALL data?')) {
+            // Delete all messages from database
             await supabase.from('messages').delete().gte('id', 0);
+            // Delete all statuses from database
             await supabase.from('statuses').delete().gte('id', 0);
+            
+            // Clear local containers immediately
             chatContainer.innerHTML = '';
             statusContainer.innerHTML = '';
+            
+            // Update status button visibility
             checkAnyStatus();
         }
-    }
-    
-    // ========== লিসেনার ==========
-    
-    function listenToOnlineUsers() {
-        supabase
-            .channel('online-users-channel')
-            .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
-                table: 'online_users' 
-            }, async () => {
-                if(currentUser) {
-                    await displayOnlineUsers();
-                }
-            })
-            .subscribe();
-    }
-    
-    function listenToMessages() {
-        supabase
-            .channel('messages-channel')
-            .on('postgres_changes', { 
-                event: 'INSERT', 
-                schema: 'public', 
-                table: 'messages' 
-            }, payload => {
-                if(currentUser) {
-                    addMessage(payload.new, payload.new.username === currentUser);
-                }
-            })
-            .subscribe();
     }
     
     // ========== ইনিশিয়ালাইজ ==========
