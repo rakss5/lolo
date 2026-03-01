@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Loiii</title>
+<title>Lolo Chat</title>
 
 <style>
 *{box-sizing:border-box}
@@ -53,10 +53,6 @@ body{
     font-size:15px;
     word-wrap:break-word;
     position: relative;
-    cursor: pointer;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
 }
 
 .msg:first-child {
@@ -110,122 +106,20 @@ body{
     font-style: italic;
 }
 
-/* ====== REACTION STYLES - ছোট সাইজ ====== */
-
-.reaction-btn {
-    position: absolute;
-    right: 5px;
-    bottom: 20px;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: #334155;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
+/* লিংক স্টাইল */
+.message-link {
+    color: #60a5fa;
+    text-decoration: underline;
+    word-break: break-all;
     cursor: pointer;
-    border: 1px solid #4b5563;
-    z-index: 5;
-    opacity: 0;
-    transition: opacity 0.2s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
-.reaction-btn:active {
-    background: #4b5563;
+.message-link:hover {
+    color: #93c5fd;
 }
 
-.msg:hover .reaction-btn {
-    opacity: 1;
-}
-
-/* মোবাইলে সবসময় দেখা যাবে */
-@media (max-width: 768px) {
-    .reaction-btn {
-        opacity: 0.8;
-    }
-}
-
-.reaction-menu {
-    background: #1e293b;
-    border-radius: 25px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-    padding: 6px 8px;
-    display: flex;
-    gap: 4px;
-    z-index: 2000;
-    border: 1px solid #4b5563;
-    animation: slideUp 0.2s ease;
-}
-
-.reaction-item {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    cursor: pointer;
-    transition: background 0.2s;
-    background: #2d3a4f;
-}
-
-.reaction-item:active {
-    background: #4b5563;
-    transform: scale(1.1);
-}
-
-.reactions-container {
-    display: flex;
-    gap: 4px;
-    margin-top: 6px;
-    flex-wrap: wrap;
-    min-height: 28px;
-}
-
-.reaction-badge {
-    background: #2d3a4f;
-    border-radius: 16px;
-    padding: 4px 8px;
-    font-size: 12px;
-    border: 1px solid #4b5563;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-.reaction-badge:active {
-    background: #4b5563;
-    transform: scale(1.05);
-}
-
-.reaction-badge .count {
-    font-size: 10px;
-    color: #94a3b8;
-    font-weight: bold;
-    min-width: 12px;
-    text-align: center;
-}
-
-.reaction-badge.own-reaction {
-    background: #3b5b8b;
-    border-color: #8b5cf6;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
+.message-link:active {
+    opacity: 0.7;
 }
 
 /* ====== MESSAGE MENU ====== */
@@ -493,7 +387,7 @@ button:active {
 
   <!-- Input Area -->
   <div id="input-area">
-    <input id="msg" placeholder="Type message" autocomplete="off">
+    <input id="msg" placeholder="Type message or paste YouTube link" autocomplete="off">
     <button class="sendBtn" id="sendBtn">📤</button>
 
     <label for="imageInput">
