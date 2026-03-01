@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>L iii</title>
+<title>Lolo iii</title>
 
 <style>
 *{box-sizing:border-box}
@@ -113,6 +113,139 @@ body{
     font-style: italic;
 }
 
+/* ====== REACTION STYLES ====== */
+
+/* রিয়েকশন বাটন */
+.reaction-btn {
+    position: absolute;
+    right: 5px;
+    bottom: 20px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    border: 1px solid #4b5563;
+    z-index: 5;
+}
+
+.msg:hover .reaction-btn {
+    opacity: 1;
+}
+
+/* রিয়েকশন মেনু */
+.reaction-menu {
+    background: #1e293b;
+    border-radius: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    padding: 8px;
+    display: flex;
+    gap: 8px;
+    z-index: 1000;
+    border: 1px solid #334155;
+    animation: fadeIn 0.2s ease;
+}
+
+.reaction-item {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.reaction-item:hover {
+    transform: scale(1.2);
+    background: #334155;
+}
+
+/* রিয়েকশন কন্টেইনার */
+.reactions-container {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.reaction-badge {
+    background: #334155;
+    border-radius: 20px;
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #4b5563;
+    cursor: pointer;
+    transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.reaction-badge:hover {
+    transform: scale(1.1);
+    background: #4b5563;
+}
+
+.reaction-badge .count {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+/* মেসেজ মেনু */
+.message-menu {
+    background: #1e293b;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    padding: 8px 0;
+    min-width: 180px;
+    z-index: 1000;
+    border: 1px solid #334155;
+    animation: fadeIn 0.2s ease;
+}
+
+.message-menu .menu-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    color: white;
+    font-size: 14px;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.message-menu .menu-item:hover {
+    background: #334155;
+}
+
+.message-menu .menu-item.edit-item {
+    border-bottom: 1px solid #334155;
+}
+
+.message-menu .menu-item.delete-item {
+    color: #ef4444;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 /* ====== STATUS ====== */
 
 .status-item {
@@ -160,53 +293,6 @@ body{
     width: 100%;
     border-radius: 20px;
     background: #000;
-}
-
-/* ====== MESSAGE MENU ====== */
-
-.message-menu {
-    background: #1e293b;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    padding: 8px 0;
-    min-width: 180px;
-    z-index: 1000;
-    border: 1px solid #334155;
-    animation: fadeIn 0.2s ease;
-}
-
-.message-menu .menu-item {
-    padding: 12px 20px;
-    cursor: pointer;
-    color: white;
-    font-size: 14px;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.message-menu .menu-item:hover {
-    background: #334155;
-}
-
-.message-menu .menu-item.edit-item {
-    border-bottom: 1px solid #334155;
-}
-
-.message-menu .menu-item.delete-item {
-    color: #ef4444;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
 }
 
 /* ===== INPUT AREA ===== */
