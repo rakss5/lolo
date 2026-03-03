@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentUser = null;
     let showingStatus = false;
     let lastSeenStatusTime = null;
-    let newStatusAvailable = false;
     
     // DOM Elements
     const userDropdown = document.getElementById("userDropdown");
@@ -36,6 +35,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageBtn = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
     
+    // ========== ইউটিউব লিংক ডিটেক্ট ফাংশন ==========
+    function isYouTubeLink(text) {
+        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+        return youtubeRegex.test(text.trim());
+    }
+    
+    function formatMessageText(text) {
+        if (!text) return '';
+        
+        const words = text.split(' ');
+        let formattedHtml = '';
+        
+        words.forEach(word => {
+            if (isYouTubeLink(word)) {
+                formattedHtml += `<span class="message-link" onclick="window.open('${word}', '_blank')">${word}</span> `;
+            } else {
+                formattedHtml += word + ' ';
+            }
+        });
+        
+        return formattedHtml;
+    }
+    
     // ========== স্ট্যাটাস চেক ফাংশন ==========
     
     async function checkAnyStatus() {
@@ -54,11 +76,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if(lastSeenStatusTime) {
                 const newStatuses = data.filter(s => new Date(s.time) > new Date(lastSeenStatusTime));
                 if(newStatuses.length > 0 && !showingStatus) {
-                    newStatusAvailable = true;
                     statusDot.style.display = 'block';
                     statusViewBtn.classList.add('new-status-animation');
                 } else {
-                    newStatusAvailable = false;
                     statusDot.style.display = 'none';
                     statusViewBtn.classList.remove('new-status-animation');
                 }
@@ -143,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ADD MESSAGE TO UI - লং প্রেস সহ
+    // ADD MESSAGE TO UI - লিংক ডিটেক্ট সহ
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -152,19 +172,21 @@ document.addEventListener('DOMContentLoaded', function() {
         div.dataset.username = msg.username;
         div.dataset.text = msg.text || '';
         
-        // লং প্রেস টাইমার
+        // লং প্রেস টাইমার (শুধু নিজের মেসেজের জন্য)
         let pressTimer;
         const longPressDuration = 500;
         
-        div.addEventListener('mousedown', startPress);
-        div.addEventListener('touchstart', startPress, { passive: true });
-        div.addEventListener('mouseup', cancelPress);
-        div.addEventListener('touchend', cancelPress);
-        div.addEventListener('mouseleave', cancelPress);
-        div.addEventListener('touchcancel', cancelPress);
+        if (isOwn) {
+            div.addEventListener('mousedown', startPress);
+            div.addEventListener('touchstart', startPress, { passive: true });
+            div.addEventListener('mouseup', cancelPress);
+            div.addEventListener('touchend', cancelPress);
+            div.addEventListener('mouseleave', cancelPress);
+            div.addEventListener('touchcancel', cancelPress);
+        }
         
         function startPress(e) {
-            if (isOwn && isWithin20Minutes(msg.time)) {
+            if (isWithin20Minutes(msg.time)) {
                 pressTimer = setTimeout(() => {
                     showEditMenu(div, msg);
                 }, longPressDuration);
@@ -191,10 +213,10 @@ document.addEventListener('DOMContentLoaded', function() {
             menu.className = 'message-menu';
             menu.innerHTML = `
                 <div class="menu-item edit-item">
-                    <span>✏️ Edit Message</span>
+                    <span>✏️ Edit</span>
                 </div>
                 <div class="menu-item delete-item">
-                    <span>🗑️ Delete Message</span>
+                    <span>🗑️ Delete</span>
                 </div>
             `;
             
@@ -232,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         async function editMessage(message) {
-            const newText = prompt('Edit your message:', message.text);
+            const newText = prompt('Edit message:', message.text);
             if (newText && newText !== message.text) {
                 await supabase
                     .from('messages')
@@ -246,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         async function deleteMessage(messageId) {
-            if (confirm('Delete this message?')) {
+            if (confirm('Delete message?')) {
                 await supabase
                     .from('messages')
                     .delete()
@@ -254,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // মেসেজ কন্টেন্ট বিল্ড
+        // মেসেজ কন্টেন্ট বিল্ড - লিংক ফরম্যাটিং সহ
         let content = `<strong style="color:${colors[msg.username] || '#fff'};">${msg.username}</strong><br>`;
         
         if (msg.image_url) {
@@ -262,10 +284,10 @@ document.addEventListener('DOMContentLoaded', function() {
             content += `<img src="${msg.image_url}" style="width:100%; max-width:320px; max-height:400px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.3); cursor:pointer; display:block;" onclick="window.open(this.src)">`;
             content += `</div>`;
             if (msg.text) {
-                content += `<div style="margin-top:5px; background-color:${isOwn ? '#2563eb' : colors[msg.username] || '#334155'}; color:white; padding:8px 12px; border-radius:14px; display:inline-block;">${msg.text}</div>`;
+                content += `<div style="margin-top:5px;">${formatMessageText(msg.text)}</div>`;
             }
         } else {
-            content += msg.text;
+            content += formatMessageText(msg.text);
         }
         
         if (msg.edited) {
@@ -426,7 +448,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if(data) data.forEach(addStatus);
         
         lastSeenStatusTime = new Date().toISOString();
-        newStatusAvailable = false;
         statusDot.style.display = 'none';
         statusViewBtn.classList.remove('new-status-animation');
     }
@@ -449,10 +470,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 event: 'UPDATE', 
                 schema: 'public', 
                 table: 'messages' 
-            }, payload => {
+            }, () => {
                 if(currentUser) {
-                    // পুরো চ্যাট রিলোড না করে শুধু ঐ মেসেজ আপডেট করা ভালো
-                    // তবে সহজ উপায় হল পুরো চ্যাট রিলোড
                     loadMessages();
                 }
             })
@@ -485,7 +504,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         addStatus(payload.new);
                     } 
                     else if(payload.new.username !== currentUser) {
-                        newStatusAvailable = true;
                         statusDot.style.display = 'block';
                         statusViewBtn.classList.add('new-status-animation');
                     }
