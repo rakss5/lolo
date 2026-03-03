@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ii</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L iii</title>
 
 <style>
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;overflow:hidden}
+html,body{height:100%;margin:0}
 
 body{
     background:#0f172a;
@@ -40,7 +40,6 @@ body{
     padding: 10px;
     display: flex;
     flex-direction: column;
-    -webkit-overflow-scrolling: touch;
 }
 
 /* ====== MESSAGE STYLE ====== */
@@ -53,6 +52,10 @@ body{
     font-size:15px;
     word-wrap:break-word;
     position: relative;
+    cursor: pointer;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .msg:first-child {
@@ -92,6 +95,10 @@ body{
     margin:5px 0;
 }
 
+.msg img:hover{
+    transform:scale(1.02);
+}
+
 .time{
     font-size:11px;
     color:#94a3b8;
@@ -106,81 +113,15 @@ body{
     font-style: italic;
 }
 
-/* লিংক স্টাইল */
-.message-link {
-    color: #60a5fa;
-    text-decoration: underline;
-    word-break: break-all;
-    cursor: pointer;
-}
-
-.message-link:hover {
-    color: #93c5fd;
-}
-
-.message-link:active {
-    opacity: 0.7;
-}
-
-/* ====== MESSAGE MENU ====== */
-
-.message-menu {
-    background: #1e293b;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-    padding: 6px 0;
-    min-width: 160px;
-    z-index: 2000;
-    border: 1px solid #4b5563;
-    animation: fadeIn 0.2s ease;
-}
-
-.message-menu .menu-item {
-    padding: 10px 18px;
-    cursor: pointer;
-    color: white;
-    font-size: 14px;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.message-menu .menu-item:active {
-    background: #334155;
-}
-
-.message-menu .menu-item.edit-item {
-    border-bottom: 1px solid #334155;
-}
-
-.message-menu .menu-item.delete-item {
-    color: #ef4444;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
 /* ====== STATUS ====== */
 
 .status-item {
     background: #1e293b;
     align-self: center;
     text-align: center;
-    margin-bottom: 12px;
-    width: 90%;
+    margin-bottom: 10px;
+    width: 80%;
     max-width: 380px;
-    border-radius: 20px;
-    padding: 15px;
-    border: 3px solid;
 }
 
 .status-item strong {
@@ -201,9 +142,9 @@ body{
     width: 100%;
     max-width: 100%;
     max-height: 500px;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    margin: 10px 0;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    margin: 15px 0;
     object-fit: contain;
     background: #0f172a;
 }
@@ -214,25 +155,73 @@ body{
     margin-top: 10px;
 }
 
+/* ভিডিওর জন্য বিশেষ স্টাইল */
 .status-media video {
     width: 100%;
-    border-radius: 15px;
+    border-radius: 20px;
     background: #000;
+}
+
+/* ====== MESSAGE MENU ====== */
+
+.message-menu {
+    background: #1e293b;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    padding: 8px 0;
+    min-width: 180px;
+    z-index: 1000;
+    border: 1px solid #334155;
+    animation: fadeIn 0.2s ease;
+}
+
+.message-menu .menu-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    color: white;
+    font-size: 14px;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.message-menu .menu-item:hover {
+    background: #334155;
+}
+
+.message-menu .menu-item.edit-item {
+    border-bottom: 1px solid #334155;
+}
+
+.message-menu .menu-item.delete-item {
+    color: #ef4444;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 /* ===== INPUT AREA ===== */
 
 #input-area{
+    position:sticky;
+    bottom:0;
     background:#020617;
     padding:8px;
     display:flex;
     gap:6px;
     flex-wrap:wrap;
     border-top:1px solid #334155;
-    z-index: 100;
 }
 
-/* ইনপুট ফিল্ড - অটোফিল বন্ধ */
 #msg{
     flex:1;
     padding:12px;
@@ -240,63 +229,17 @@ body{
     border:none;
     outline:none;
     min-width:120px;
-    font-size:14px;
-    background:#1e293b;
-    color:white;
-}
-
-/* মোবাইলের জন্য অপ্টিমাইজেশন */
-@media (max-width: 768px) {
-    #input-area {
-        padding: 5px;
-        gap: 4px;
-    }
-    
-    #msg {
-        padding: 10px;
-        font-size: 14px;
-    }
-    
-    .sendBtn, .imageBtn, .statusUploadBtn {
-        width: 38px;
-        height: 38px;
-        font-size: 16px;
-    }
-}
-
-#msg::placeholder {
-    color: #64748b;
-}
-
-/* অটোফিল স্টাইল ওভাররাইড */
-#msg:-webkit-autofill,
-#msg:-webkit-autofill:hover,
-#msg:-webkit-autofill:focus,
-#msg:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
-    -webkit-text-fill-color: white !important;
-    caret-color: white;
 }
 
 .sendBtn,.imageBtn,.statusUploadBtn{
-    width:40px;
-    height:40px;
+    width:42px;
+    height:42px;
     border-radius:50%;
     border:none;
     background:#fff;
-    font-size:18px;
+    font-size:20px;
     flex-shrink:0;
     color:#000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: transform 0.2s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-}
-
-.sendBtn:active, .imageBtn:active, .statusUploadBtn:active {
-    transform: scale(1.1);
 }
 
 #imageBtn{
@@ -316,18 +259,20 @@ body{
 /* ===== TOPBAR ===== */
 
 #topBar{
+    position:sticky;
+    bottom:0;
+    z-index:10;
     background:#020617;
-    padding:6px 8px;
+    padding:6px;
     display:flex;
     justify-content:space-between;
     align-items:center;
     border-top:1px solid #334155;
-    z-index: 100;
 }
 
 #userSelect{
     color:white;
-    font-size:13px;
+    font-size:14px;
     display:flex;
     align-items:center;
     gap:5px;
@@ -336,20 +281,15 @@ body{
 #userSelect select{
     background:#1e293b;
     color:white;
-    border:1px solid #334155;
-    padding:6px;
-    border-radius:6px;
-    font-size:13px;
-    outline:none;
+    border:none;
+    padding:4px;
+    border-radius:4px;
 }
 
 #onlineUsers{
     color:white;
-    font-size:13px;
+    font-size:14px;
     display:none;
-    background:#1e293b;
-    padding:4px 10px;
-    border-radius:16px;
 }
 
 button{
@@ -359,18 +299,13 @@ button{
     padding:6px 10px;
     cursor:pointer;
     margin-left:4px;
-    font-size:13px;
-    transition: transform 0.2s;
-}
-
-button:active {
-    transform: scale(0.95);
 }
 
 #fullClearBtn{
     background:#dc2626;
 }
 
+/* স্ট্যাটাস বাটন */
 #statusViewBtn {
     background: #8b5cf6;
     position: relative;
@@ -378,9 +313,19 @@ button:active {
 }
 
 @keyframes newStatusPulse {
-    0% { transform: scale(1); background: #8b5cf6; }
-    50% { transform: scale(1.05); background: #f97316; }
-    100% { transform: scale(1); background: #8b5cf6; }
+    0% {
+        transform: scale(1);
+        background: #8b5cf6;
+    }
+    50% {
+        transform: scale(1.05);
+        background: #f97316;
+        box-shadow: 0 0 15px #f97316;
+    }
+    100% {
+        transform: scale(1);
+        background: #8b5cf6;
+    }
 }
 
 .new-status-animation {
@@ -389,10 +334,10 @@ button:active {
 
 .status-dot {
     position: absolute;
-    top: -3px;
-    right: -3px;
-    width: 10px;
-    height: 10px;
+    top: -5px;
+    right: -5px;
+    width: 12px;
+    height: 12px;
     background: #ef4444;
     border-radius: 50%;
     border: 2px solid #020617;
@@ -415,25 +360,18 @@ button:active {
     <div id="statusContainer"></div>
   </div>
 
-  <!-- Input Area - ফিক্সড -->
+  <!-- Input Area -->
   <div id="input-area">
-    <input id="msg" 
-           placeholder="Type message or paste YouTube link" 
-           autocomplete="off"
-           autocorrect="off"
-           autocapitalize="off"
-           spellcheck="false"
-           type="text"
-           inputmode="text">
+    <input id="msg" placeholder="Type message">
     <button class="sendBtn" id="sendBtn">📤</button>
 
     <label for="imageInput">
-      <button class="imageBtn" id="imageBtn">🖼️</button>
+      <button class="imageBtn" id="imageBtn">📷</button>
     </label>
     <input type="file" id="imageInput" accept="image/*">
 
     <label for="statusInput">
-      <button class="statusUploadBtn" id="statusUploadBtn">📋</button>
+      <button class="statusUploadBtn" id="statusUploadBtn">📋+</button>
     </label>
     <input type="file" id="statusInput" accept="image/*,video/*">
   </div>
