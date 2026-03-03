@@ -1,8 +1,7 @@
-// script.js
 document.addEventListener('DOMContentLoaded', function() {
     // Your exact Supabase configuration
     const SUPABASE_URL = 'https://hhbbwkeazqnyhdcfyqfg.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_7kplsmCA9Bnjo8gQ68Ki0Q_uTZ1bp6D';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoYmJ3a2VhenFueWhkY2Z5cWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NDk1NTUsImV4cCI6MjA1NjMyNTU1NX0.RXjRVuf04AQ85j34gBPDW3uMee3EIMlzxBvC_vEwLZc';
     
     // Initialize Supabase
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -35,6 +34,85 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageBtn = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
     
+    // ========== পেস্ট ইভেন্ট হ্যান্ডলার ==========
+    msgInput.addEventListener('paste', function(e) {
+        // পেস্ট করা ডাটা পাওয়া
+        const pastedData = e.clipboardData || window.clipboardData;
+        const text = pastedData.getData('text');
+        const items = pastedData.items;
+        
+        // চেক করি ইমেজ পেস্ট করা হয়েছে কিনা
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                // ইমেজ পেস্ট করা হয়েছে
+                e.preventDefault();
+                const file = items[i].getAsFile();
+                if (file) {
+                    handlePastedImage(file);
+                }
+                return;
+            }
+        }
+        
+        // টেক্সট পেস্ট - এটা ডিফল্ট ভাবেই হবে, তাই কিছু করার দরকার নেই
+        console.log('Text pasted:', text);
+    });
+    
+    // ========== পেস্ট করা ইমেজ হ্যান্ডেল ==========
+    async function handlePastedImage(file) {
+        if(!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
+        
+        // শুধু ইমেজ ফাইল চেক
+        if(!file.type.startsWith('image/')) {
+            alert('Please paste an image file only');
+            return;
+        }
+        
+        // ফাইল সাইজ চেক (৫MB এর নিচে)
+        if(file.size > 5 * 1024 * 1024) {
+            alert('Image size should be less than 5MB');
+            return;
+        }
+        
+        const fileExt = file.name ? file.name.split('.').pop() : 'png';
+        const fileName = `pasted_${Date.now()}.${fileExt}`;
+        const filePath = `${currentUser}/${fileName}`;
+        
+        try {
+            const { error: uploadError } = await supabase.storage
+                .from('media')
+                .upload(filePath, file);
+                
+            if(uploadError) {
+                alert('Upload failed: ' + uploadError.message);
+                return;
+            }
+            
+            const { data: { publicUrl } } = supabase.storage
+                .from('media')
+                .getPublicUrl(filePath);
+            
+            const message = {
+                username: currentUser,
+                text: msgInput.value.trim() || '',
+                image_url: publicUrl,
+                time: new Date().toISOString(),
+                edited: false
+            };
+            
+            await supabase.from('messages').insert([message]);
+            msgInput.value = '';
+            await updateMyOnlineStatus();
+            
+        } catch(error) {
+            console.error('Error uploading pasted image:', error);
+            alert('Failed to upload image');
+        }
+    }
+    
     // ========== ইউটিউব লিংক ডিটেক্ট ফাংশন ==========
     function isYouTubeLink(text) {
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
@@ -44,18 +122,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatMessageText(text) {
         if (!text) return '';
         
-        const words = text.split(' ');
-        let formattedHtml = '';
-        
-        words.forEach(word => {
-            if (isYouTubeLink(word)) {
-                formattedHtml += `<span class="message-link" onclick="window.open('${word}', '_blank')">${word}</span> `;
-            } else {
-                formattedHtml += word + ' ';
-            }
+        // URL গুলো ডিটেক্ট করে লিংক বানানো
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return text.replace(urlRegex, function(url) {
+            return `<span class="message-link" onclick="window.open('${url}', '_blank')">${url}</span>`;
         });
-        
-        return formattedHtml;
     }
     
     // ========== স্ট্যাটাস চেক ফাংশন ==========
