@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const colors = {
-        eesti: "#22c55e",
-        ralii: "#619efa"
+        sam: "#22c55e",
+        kimi: "#619efa"
     };
 
     let currentUser = null;
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if(data) {
             const otherUsers = data
                 .filter(u => u.username !== currentUser)
-                .filter(u => u.username === 'eesti' || u.username === 'ralii')
+                .filter(u => u.username === 'sam' || u.username === 'kimi')
                 .map(u => u.username);
 
             onlineUsersEl.style.display = "block";
