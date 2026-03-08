@@ -139,6 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // গুরুত্বপূর্ণ পরিবর্তন: addMessage ফাংশনে append এর বদলে prepend
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -257,23 +258,25 @@ document.addEventListener('DOMContentLoaded', function() {
         content += `<div class="time">${new Date(msg.time).toLocaleTimeString()}</div>`;
 
         div.innerHTML = content;
-        chatContainer.appendChild(div);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        // prepend ব্যবহার করা হয়েছে যাতে column-reverse মোডে মেসেজ নিচ থেকে যোগ হয়
+        chatContainer.prepend(div); 
     }
 
+    // গুরুত্বপূর্ণ পরিবর্তন: order এ ascending: false এবং স্ক্রল লজিক পরিবর্তন
     async function loadMessages() {
         if(!currentUser) return;
 
         const { data } = await supabase
             .from('messages')
             .select('*')
-            .order('time', { ascending: true });
+            .order('time', { ascending: false }); // নতুন মেসেজ আগে আসবে
 
         chatContainer.innerHTML = '';
         if(data) {
             data.forEach(msg => addMessage(msg, msg.username === currentUser));
         }
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        // column-reverse এ স্ক্রল অটোমেটিক নিচে থাকে
     }
 
     async function handleImageUpload(e) {
@@ -386,8 +389,8 @@ document.addEventListener('DOMContentLoaded', function() {
         content += `<div class="time">${new Date(status.time).toLocaleTimeString()}</div>`;
 
         div.innerHTML = content;
-        statusContainer.appendChild(div);
-        statusContainer.scrollTop = statusContainer.scrollHeight;
+        // Status এর ক্ষেত্রেও prepend ব্যবহার করতে পারেন যদি নিচ থেকে দেখাতে চান
+        statusContainer.prepend(div);
     }
 
     async function loadStatuses() {
@@ -484,8 +487,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         if(confirm('Delete ALL data?')) {
-            await supabase.from('messages').delete().gte('id', 0);
-            await supabase.from('statuses').delete().gte('id', 0);
+            await supabase.from('messages').delete().neq('id', 0);
+            await supabase.from('statuses').delete().neq('id', 0);
             chatContainer.innerHTML = '';
             statusContainer.innerHTML = '';
             checkAnyStatus();
@@ -493,7 +496,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function init() {
-        console.log('App initializing...');
         listenToMessages();
         listenToStatuses();
         listenToOnlineUsers();
@@ -517,8 +519,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 supabase.from('online_users').delete().eq('username', currentUser);
             }
         });
-
-        console.log('App initialized!');
     }
 
     sendBtn.addEventListener("click", send);
