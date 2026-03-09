@@ -1,19 +1,18 @@
 document.addEventListener('DOMContentLoaded', function() {
-
     const SUPABASE_URL  = 'https://hhbbwkeazqnyhdcfyqfg.supabase.co';
     const SUPABASE_KEY  = 'sb_publishable_7kplsmCA9Bnjo8gQ68Ki0Q_uTZ1bp6D';
-
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+    
     const colors = {
         sam: "#22c55e",
         kimi: "#619efa"
     };
-
+    
     let currentUser = null;
     let showingStatus = false;
     let lastSeenStatusTime = null;
-
+    let lastMessageDate = null; // Track last displayed date
+    
     const userDropdown  = document.getElementById("userDropdown");
     const msgInput      = document.getElementById("msg");
     const chatWrap      = document.getElementById("chatWrap");
@@ -30,12 +29,77 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendBtn       = document.getElementById("sendBtn");
     const imageBtn      = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
-
+    
+    // Helper function to format date like WhatsApp
+    function formatMessageTime(timestamp) {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        
+        if (messageDate.getTime() === today.getTime()) {
+            // Today: show time only
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else if (messageDate.getTime() === yesterday.getTime()) {
+            // Yesterday: show "Yesterday" and time
+            return `Yesterday ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        } else {
+            // Older: show date and time
+            return date.toLocaleDateString([], { 
+                day: 'numeric', 
+                month: 'short',
+                year: now.getFullYear() !== date.getFullYear() ? 'numeric' : undefined
+            }) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+    }
+    
+    // Function to add date separator if needed
+    function addDateSeparatorIfNeeded(messageTime) {
+        const messageDate = new Date(messageTime);
+        const messageDateStr = messageDate.toDateString();
+        
+        if (lastMessageDate !== messageDateStr) {
+            const separator = document.createElement('div');
+            separator.className = 'date-separator';
+            separator.style.cssText = `
+                text-align: center;
+                margin: 15px 0;
+                font-size: 12px;
+                color: #94a3b8;
+                position: relative;
+                flex-shrink: 0;
+            `;
+            
+            const today = new Date().toDateString();
+            const yesterday = new Date(Date.now() - 86400000).toDateString();
+            
+            let dateText;
+            if (messageDateStr === today) {
+                dateText = 'Today';
+            } else if (messageDateStr === yesterday) {
+                dateText = 'Yesterday';
+            } else {
+                dateText = messageDate.toLocaleDateString([], { 
+                    day: 'numeric', 
+                    month: 'long',
+                    year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                });
+            }
+            
+            separator.innerHTML = `<span style="background: #1e293b; padding: 4px 12px; border-radius: 12px;">${dateText}</span>`;
+            chatContainer.appendChild(separator);
+            lastMessageDate = messageDateStr;
+        }
+    }
+    
     function isYouTubeLink(text) {
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
         return youtubeRegex.test(text.trim());
     }
-
+    
     function formatMessageText(text) {
         if (!text) return '';
         const words = text.split(' ');
@@ -49,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         return formattedHtml;
     }
-
+    
     async function checkAnyStatus() {
         if(!currentUser) return;
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
@@ -58,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .select('username, time')
             .gt('time', oneDayAgo)
             .order('time', { ascending: false });
-
+            
         if(data && data.length > 0) {
             statusViewBtn.style.display = 'inline-block';
             if(lastSeenStatusTime) {
@@ -77,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusViewBtn.classList.remove('new-status-animation');
         }
     }
-
+    
     async function updateMyOnlineStatus() {
         if(!currentUser) return;
         await supabase.from('online_users').upsert({
@@ -85,25 +149,24 @@ document.addEventListener('DOMContentLoaded', function() {
             last_seen: new Date().toISOString()
         });
     }
-
+    
     async function displayOnlineUsers() {
         if(!currentUser) return;
         const { data } = await supabase
             .from('online_users')
             .select('username')
             .gt('last_seen', new Date(Date.now() - 10000).toISOString());
-
+            
         if(data) {
             const otherUsers = data
                 .filter(u => u.username !== currentUser)
                 .filter(u => u.username === 'sam' || u.username === 'kimi')
                 .map(u => u.username);
-
             onlineUsersEl.style.display = "block";
             onlineList.innerText = otherUsers.length > 0 ? otherUsers.join(', ') : 'none';
         }
     }
-
+    
     userDropdown.addEventListener("change", async (e) => {
         if(e.target.value) {
             if(currentUser) {
@@ -112,34 +175,35 @@ document.addEventListener('DOMContentLoaded', function() {
             currentUser = e.target.value;
             await updateMyOnlineStatus();
             chatContainer.innerHTML = '';
+            lastMessageDate = null; // Reset date tracking
             loadMessages();
             await displayOnlineUsers();
             await checkAnyStatus();
         }
     });
-
+    
     async function send() {
         if(!currentUser) {
             alert('Please select a user first');
             return;
         }
         if(!msgInput.value.trim()) return;
-
+        
         const message = {
             username: currentUser,
             text: msgInput.value.trim(),
             time: new Date().toISOString(),
             edited: false
         };
-
+        
         const { error } = await supabase.from('messages').insert([message]);
         if(!error) {
             msgInput.value = '';
             await updateMyOnlineStatus();
         }
     }
-
-    // গুরুত্বপূর্ণ পরিবর্তন: addMessage ফাংশনে append এর বদলে prepend
+    
+    // Fixed: Changed from prepend to append with proper scroll handling
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -147,10 +211,10 @@ document.addEventListener('DOMContentLoaded', function() {
         div.dataset.time = msg.time;
         div.dataset.username = msg.username;
         div.dataset.text = msg.text || '';
-
+        
         let pressTimer;
         const longPressDuration = 500;
-
+        
         if (isOwn) {
             div.addEventListener('mousedown', startPress);
             div.addEventListener('touchstart', startPress, { passive: true });
@@ -159,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
             div.addEventListener('mouseleave', cancelPress);
             div.addEventListener('touchcancel', cancelPress);
         }
-
+        
         function startPress(e) {
             if (isWithin20Minutes(msg.time)) {
                 pressTimer = setTimeout(() => {
@@ -167,47 +231,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, longPressDuration);
             }
         }
-
+        
         function cancelPress() {
             if (pressTimer) clearTimeout(pressTimer);
         }
-
+        
         function isWithin20Minutes(messageTime) {
             const messageDate = new Date(messageTime);
             const now = new Date();
             const diffMinutes = (now - messageDate) / (1000 * 60);
             return diffMinutes <= 20;
         }
-
+        
         function showEditMenu(element, message) {
             const existing = document.querySelector('.message-menu');
             if (existing) existing.remove();
-
+            
             const menu = document.createElement('div');
             menu.className = 'message-menu';
             menu.innerHTML = `
                 <div class="menu-item edit-item"><span>✏️ Edit</span></div>
                 <div class="menu-item delete-item"><span>🗑️ Delete</span></div>
             `;
-
+            
             const rect = element.getBoundingClientRect();
             menu.style.position = 'fixed';
             menu.style.left = `${rect.left + (rect.width / 2)}px`;
             menu.style.top = `${rect.top - 10}px`;
             menu.style.transform = 'translate(-50%, -100%)';
-
+            
             menu.querySelector('.edit-item').onclick = () => {
                 editMessage(message);
                 menu.remove();
             };
-
+            
             menu.querySelector('.delete-item').onclick = () => {
                 deleteMessage(message.id);
                 menu.remove();
             };
-
+            
             document.body.appendChild(menu);
-
+            
             setTimeout(() => {
                 const close = e => {
                     if (!menu.contains(e.target) && e.target !== element) {
@@ -218,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.addEventListener('click', close);
             }, 100);
         }
-
+        
         async function editMessage(message) {
             const newText = prompt('Edit message:', message.text);
             if (newText && newText !== message.text) {
@@ -232,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     .eq('id', message.id);
             }
         }
-
+        
         async function deleteMessage(messageId) {
             if (confirm('Delete message?')) {
                 await supabase
@@ -241,9 +305,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     .eq('id', messageId);
             }
         }
-
+        
         let content = `<strong style="color:${colors[msg.username] || '#fff'};">${msg.username}</strong><br>`;
-
+        
         if (msg.image_url) {
             content += `<div style="margin:5px 0;">`;
             content += `<img src="${msg.image_url}" style="width:100%; max-width:320px; max-height:400px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.3); cursor:pointer; display:block;" onclick="window.open(this.src)">`;
@@ -252,65 +316,74 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             content += formatMessageText(msg.text);
         }
-
+        
         if (msg.edited) content += ` <span class="edited-tag">(edited)</span>`;
-
-        content += `<div class="time">${new Date(msg.time).toLocaleTimeString()}</div>`;
-
+        content += `<div class="time">${formatMessageTime(msg.time)}</div>`;
+        
         div.innerHTML = content;
         
-        // prepend ব্যবহার করা হয়েছে যাতে column-reverse মোডে মেসেজ নিচ থেকে যোগ হয়
-        chatContainer.prepend(div); 
+        // Changed from prepend to append - messages will appear in correct order
+        chatContainer.appendChild(div);
+        
+        // Auto-scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-
-    // গুরুত্বপূর্ণ পরিবর্তন: order এ ascending: false এবং স্ক্রল লজিক পরিবর্তন
+    
+    // Fixed: Changed to ascending order and now adds date separators
     async function loadMessages() {
         if(!currentUser) return;
-
+        
         const { data } = await supabase
             .from('messages')
             .select('*')
-            .order('time', { ascending: false }); // নতুন মেসেজ আগে আসবে
-
+            .order('time', { ascending: true }); // Changed to ascending for correct order
+            
         chatContainer.innerHTML = '';
+        lastMessageDate = null; // Reset date tracking
+        
         if(data) {
-            data.forEach(msg => addMessage(msg, msg.username === currentUser));
+            data.forEach(msg => {
+                addDateSeparatorIfNeeded(msg.time);
+                addMessage(msg, msg.username === currentUser);
+            });
         }
-        // column-reverse এ স্ক্রল অটোমেটিক নিচে থাকে
+        
+        // Scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-
+    
     async function handleImageUpload(e) {
         if(!currentUser) {
             alert('Please select a user first');
             imageInput.value = '';
             return;
         }
-
+        
         const file = e.target.files[0];
         if(!file || !file.type.startsWith('image/')) {
             alert('Please select an image file only');
             imageInput.value = '';
             return;
         }
-
+        
         const fileExt = file.name.split('.').pop();
         const fileName = `chat_${Date.now()}.${fileExt}`;
         const filePath = `${currentUser}/${fileName}`;
-
+        
         const { error: uploadError } = await supabase.storage
             .from('media')
             .upload(filePath, file);
-
+            
         if(uploadError) {
             alert('Upload failed: ' + uploadError.message);
             imageInput.value = '';
             return;
         }
-
+        
         const { data: { publicUrl } } = supabase.storage
             .from('media')
             .getPublicUrl(filePath);
-
+            
         const message = {
             username: currentUser,
             text: msgInput.value.trim() || '',
@@ -318,41 +391,41 @@ document.addEventListener('DOMContentLoaded', function() {
             time: new Date().toISOString(),
             edited: false
         };
-
+        
         await supabase.from('messages').insert([message]);
         msgInput.value = '';
         imageInput.value = '';
         await updateMyOnlineStatus();
     }
-
+    
     async function handleStatusUpload(e) {
         if(!currentUser) {
             alert('Please select a user first');
             statusInput.value = '';
             return;
         }
-
+        
         const file = e.target.files[0];
         if(!file) return;
-
+        
         const fileExt = file.name.split('.').pop();
         const fileName = `status_${Date.now()}.${fileExt}`;
         const filePath = `${currentUser}/${fileName}`;
-
+        
         const { error: uploadError } = await supabase.storage
             .from('media')
             .upload(filePath, file);
-
+            
         if(uploadError) {
             alert('Upload failed: ' + uploadError.message);
             statusInput.value = '';
             return;
         }
-
+        
         const { data: { publicUrl } } = supabase.storage
             .from('media')
             .getPublicUrl(filePath);
-
+            
         const status = {
             username: currentUser,
             media_url: publicUrl,
@@ -360,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
             caption: msgInput.value.trim() || '',
             time: new Date().toISOString()
         };
-
+        
         await supabase.from('statuses').insert([status]);
         msgInput.value = '';
         statusInput.value = '';
@@ -368,55 +441,55 @@ document.addEventListener('DOMContentLoaded', function() {
         await updateMyOnlineStatus();
         setTimeout(checkAnyStatus, 1000);
     }
-
+    
     function addStatus(status) {
         const div = document.createElement('div');
         div.className = 'status-item';
         div.style.borderColor = colors[status.username] || '#334155';
-
+        
         let content = `<strong style="color:${colors[status.username] || '#fff'};">${status.username}</strong><br>`;
-
+        
         if(status.caption) {
             content += `<div style="color:white; margin:8px 0;">${status.caption}</div>`;
         }
-
+        
         if(status.media_type === 'image') {
             content += `<img src="${status.media_url}" class="status-media" style="cursor:pointer;" onclick="window.open(this.src)">`;
         } else {
             content += `<video src="${status.media_url}" class="status-media" controls></video>`;
         }
-
-        content += `<div class="time">${new Date(status.time).toLocaleTimeString()}</div>`;
-
+        
+        content += `<div class="time">${formatMessageTime(status.time)}</div>`;
         div.innerHTML = content;
-        // Status এর ক্ষেত্রেও prepend ব্যবহার করতে পারেন যদি নিচ থেকে দেখাতে চান
+        
         statusContainer.prepend(div);
     }
-
+    
     async function loadStatuses() {
         if(!currentUser) return;
-
+        
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
         const { data } = await supabase
             .from('statuses')
             .select('*')
             .gt('time', oneDayAgo)
             .order('time', { ascending: false });
-
+            
         statusContainer.innerHTML = '';
         if(data) data.forEach(addStatus);
-
+        
         lastSeenStatusTime = new Date().toISOString();
         statusDot.style.display = 'none';
         statusViewBtn.classList.remove('new-status-animation');
     }
-
+    
     function listenToMessages() {
         supabase
             .channel('messages-channel')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
                 payload => {
                     if(currentUser) {
+                        addDateSeparatorIfNeeded(payload.new.time);
                         addMessage(payload.new, payload.new.username === currentUser);
                     }
                 })
@@ -426,7 +499,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 () => { if(currentUser) loadMessages(); })
             .subscribe();
     }
-
+    
     function listenToStatuses() {
         supabase
             .channel('statuses-channel')
@@ -449,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             .subscribe();
     }
-
+    
     function listenToOnlineUsers() {
         supabase
             .channel('online-users-channel')
@@ -459,14 +532,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             .subscribe();
     }
-
+    
     function toggleStatusView() {
         if(!currentUser) {
             alert('Please select a user first');
             return;
         }
-
+        
         showingStatus = !showingStatus;
+        
         if(showingStatus) {
             chatWrap.style.display = "none";
             statusArea.style.display = "flex";
@@ -480,53 +554,55 @@ document.addEventListener('DOMContentLoaded', function() {
             checkAnyStatus();
         }
     }
-
+    
     async function fullClear() {
         if(!currentUser) {
             alert('Please select a user first');
             return;
         }
+        
         if(confirm('Delete ALL data?')) {
             await supabase.from('messages').delete().neq('id', 0);
             await supabase.from('statuses').delete().neq('id', 0);
             chatContainer.innerHTML = '';
             statusContainer.innerHTML = '';
+            lastMessageDate = null;
             checkAnyStatus();
         }
     }
-
+    
     function init() {
         listenToMessages();
         listenToStatuses();
         listenToOnlineUsers();
-
+        
         imageInput.addEventListener("change", handleImageUpload);
         statusInput.addEventListener("change", handleStatusUpload);
-
+        
         setInterval(async () => {
             if(currentUser) {
                 await updateMyOnlineStatus();
                 await displayOnlineUsers();
             }
         }, 10000);
-
+        
         setInterval(() => {
             if(currentUser) checkAnyStatus();
         }, 60000);
-
+        
         window.addEventListener('beforeunload', () => {
             if(currentUser) {
                 supabase.from('online_users').delete().eq('username', currentUser);
             }
         });
     }
-
+    
     sendBtn.addEventListener("click", send);
     imageBtn.addEventListener("click", () => imageInput.click());
     statusUploadBtn.addEventListener("click", () => statusInput.click());
     statusViewBtn.addEventListener("click", toggleStatusView);
     fullClearBtn.addEventListener("click", fullClear);
     msgInput.addEventListener("keydown", e => { if(e.key === "Enter") send(); });
-
+    
     init();
 });
