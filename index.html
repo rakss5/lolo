@@ -34,7 +34,7 @@
             background: #1e293b;
             padding: 10px;
             display: flex;
-            flex-direction: column-reverse; /* নিচ থেকে উপরে সাজানোর জন্য */
+            /* flex-direction: column-reverse;  নিচ থেকে উপরে সাজানোর জন্য */
             -webkit-overflow-scrolling: touch;
         }
 
@@ -221,6 +221,39 @@
             border: 2px solid #020617;
             display: none;
         }
+
+
+
+
+
+
+		/* Add this to your existing CSS */
+.date-separator {
+    text-align: center;
+    margin: 15px 0;
+    font-size: 12px;
+    color: #94a3b8;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.date-separator span {
+    background: #1e293b;
+    padding: 4px 12px;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+/* Update chatContainer styles */
+#chatContainer, #statusContainer {
+    flex: 1;
+    overflow-y: auto;
+    background: #1e293b;
+    padding: 10px;
+    display: flex;
+    flex-direction: column; /* Changed from column-reverse */
+    -webkit-overflow-scrolling: touch;
+}
     </style>
 </head>
 <body>
