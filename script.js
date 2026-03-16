@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentUser = null;
     let showingStatus = false;
     let lastSeenStatusTime = null;
-    let lastMessageDate = null; // Track last displayed date
+    let lastMessageDate = null;
     
     const userDropdown  = document.getElementById("userDropdown");
     const msgInput      = document.getElementById("msg");
@@ -41,13 +41,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         
         if (messageDate.getTime() === today.getTime()) {
-            // Today: show time only
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         } else if (messageDate.getTime() === yesterday.getTime()) {
-            // Yesterday: show "Yesterday" and time
             return `Yesterday ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
         } else {
-            // Older: show date and time
             return date.toLocaleDateString([], { 
                 day: 'numeric', 
                 month: 'short',
@@ -64,14 +61,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (lastMessageDate !== messageDateStr) {
             const separator = document.createElement('div');
             separator.className = 'date-separator';
-            separator.style.cssText = `
-                text-align: center;
-                margin: 15px 0;
-                font-size: 12px;
-                color: #94a3b8;
-                position: relative;
-                flex-shrink: 0;
-            `;
             
             const today = new Date().toDateString();
             const yesterday = new Date(Date.now() - 86400000).toDateString();
@@ -89,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
             
-            separator.innerHTML = `<span style="background: #1e293b; padding: 4px 12px; border-radius: 12px;">${dateText}</span>`;
+            separator.innerHTML = `<span>${dateText}</span>`;
             chatContainer.appendChild(separator);
             lastMessageDate = messageDateStr;
         }
@@ -175,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentUser = e.target.value;
             await updateMyOnlineStatus();
             chatContainer.innerHTML = '';
-            lastMessageDate = null; // Reset date tracking
+            lastMessageDate = null;
             loadMessages();
             await displayOnlineUsers();
             await checkAnyStatus();
@@ -203,7 +192,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Fixed: Changed from prepend to append with proper scroll handling
     function addMessage(msg, isOwn) {
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
@@ -322,24 +310,20 @@ document.addEventListener('DOMContentLoaded', function() {
         
         div.innerHTML = content;
         
-        // Changed from prepend to append - messages will appear in correct order
         chatContainer.appendChild(div);
-        
-        // Auto-scroll to bottom
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
-    // Fixed: Changed to ascending order and now adds date separators
     async function loadMessages() {
         if(!currentUser) return;
         
         const { data } = await supabase
             .from('messages')
             .select('*')
-            .order('time', { ascending: true }); // Changed to ascending for correct order
+            .order('time', { ascending: true });
             
         chatContainer.innerHTML = '';
-        lastMessageDate = null; // Reset date tracking
+        lastMessageDate = null;
         
         if(data) {
             data.forEach(msg => {
@@ -348,7 +332,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // Scroll to bottom
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
@@ -454,7 +437,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if(status.media_type === 'image') {
-            content += `<img src="${status.media_url}" class="status-media" style="cursor:pointer;" onclick="window.open(this.src)">`;
+            content += `<img src="${status.media_url}" class="status-media" onclick="window.open(this.src)">`;
         } else {
             content += `<video src="${status.media_url}" class="status-media" controls></video>`;
         }
