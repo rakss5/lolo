@@ -59,30 +59,40 @@ document.addEventListener('DOMContentLoaded', function() {
         const lastSeen = new Date(timestamp);
         const now = new Date();
         const diffSeconds = Math.floor((now - lastSeen) / 1000);
-        const diffMinutes = Math.floor(diffSeconds / 60);
-        const diffHours = Math.floor(diffMinutes / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
+        
+        // If online (within 10 seconds)
         if (diffSeconds <= 10) {
             return 'Online';
         }
-
-        if (diffMinutes < 1) {
-            return 'Just now';
-        } else if (diffMinutes < 60) {
-            return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
-        } else if (diffHours < 24) {
-            return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-        } else if (diffDays === 1) {
-            return 'Yesterday';
-        } else if (diffDays < 7) {
-            return `${diffDays} days ago`;
+        
+        // Format the actual time
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const lastSeenDate = new Date(lastSeen.getFullYear(), lastSeen.getMonth(), lastSeen.getDate());
+        
+        // Format time as HH:MM AM/PM
+        const timeString = lastSeen.toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+        });
+        
+        if (lastSeenDate.getTime() === today.getTime()) {
+            // Today - show just time
+            return `Today at ${timeString}`;
+        } else if (lastSeenDate.getTime() === yesterday.getTime()) {
+            // Yesterday - show "Yesterday at time"
+            return `Yesterday at ${timeString}`;
         } else {
-            return lastSeen.toLocaleDateString([], { 
+            // Older - show date and time
+            const dateString = lastSeen.toLocaleDateString([], { 
                 day: 'numeric', 
                 month: 'short',
                 year: lastSeen.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
             });
+            return `${dateString} at ${timeString}`;
         }
     }
     
