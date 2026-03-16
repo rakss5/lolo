@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageBtn      = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
     
-    // Helper function to format date like WhatsApp
     function formatMessageTime(timestamp) {
         const date = new Date(timestamp);
         const now = new Date();
@@ -53,7 +52,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to add date separator if needed
+    function formatLastSeen(timestamp) {
+        if (!timestamp) return 'Offline';
+        
+        const lastSeen = new Date(timestamp);
+        const now = new Date();
+        const diffSeconds = Math.floor((now - lastSeen) / 1000);
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        const diffHours = Math.floor(diffMinutes / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffSeconds <= 10) {
+            return 'Online';
+        }
+
+        if (diffMinutes < 1) {
+            return 'Just now';
+        } else if (diffMinutes < 60) {
+            return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+        } else if (diffHours < 24) {
+            return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        } else if (diffDays === 1) {
+            return 'Yesterday';
+        } else if (diffDays < 7) {
+            return `${diffDays} days ago`;
+        } else {
+            return lastSeen.toLocaleDateString([], { 
+                day: 'numeric', 
+                month: 'short',
+                year: lastSeen.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+            });
+        }
+    }
+    
     function addDateSeparatorIfNeeded(messageTime) {
         const messageDate = new Date(messageTime);
         const messageDateStr = messageDate.toDateString();
@@ -141,18 +172,40 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function displayOnlineUsers() {
         if(!currentUser) return;
-        const { data } = await supabase
+        
+        const { data: allUsers } = await supabase
             .from('online_users')
-            .select('username')
-            .gt('last_seen', new Date(Date.now() - 10000).toISOString());
+            .select('username, last_seen')
+            .in('username', ['sam', 'kimi']);
             
-        if(data) {
-            const otherUsers = data
-                .filter(u => u.username !== currentUser)
-                .filter(u => u.username === 'sam' || u.username === 'kimi')
-                .map(u => u.username);
+        if(allUsers) {
+            let statusHtml = '';
+            const now = new Date();
+            
+            for (const user of ['sam', 'kimi']) {
+                if (user === currentUser) continue;
+                
+                const userData = allUsers.find(u => u.username === user);
+                const lastSeen = userData?.last_seen;
+                
+                const isOnline = lastSeen && (now - new Date(lastSeen)) <= 10000;
+                
+                statusHtml += `<div style="margin: 2px 0; font-size: 12px;">`;
+                statusHtml += `<span style="color:${colors[user] || '#fff'};">●</span> ${user}: `;
+                
+                if (isOnline) {
+                    statusHtml += `<span style="color: #10b981;">Online</span>`;
+                } else if (lastSeen) {
+                    statusHtml += `last seen ${formatLastSeen(lastSeen)}`;
+                } else {
+                    statusHtml += `Offline`;
+                }
+                
+                statusHtml += `</div>`;
+            }
+            
             onlineUsersEl.style.display = "block";
-            onlineList.innerText = otherUsers.length > 0 ? otherUsers.join(', ') : 'none';
+            onlineUsersEl.innerHTML = statusHtml;
         }
     }
     
