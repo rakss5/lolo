@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>i</title>
+    <title>ii</title>
     <style>
         *{box-sizing:border-box}
         html,body{height:100%;margin:0;overflow:hidden}
@@ -197,11 +197,18 @@
             font-size:13px;
             display:none;
             background:#1e293b;
-            padding:8px 12px;
+            padding:4px 10px;
             border-radius:16px;
-            min-width: 140px;
-            text-align: left;
-            line-height: 1.5;
+        }
+        #lastSeenContainer {
+            color: #94a3b8;
+            font-size: 11px;
+            background: #1e293b;
+            padding: 4px 10px;
+            border-radius: 16px;
+            margin-top: 2px;
+            display: none;
+            text-align: center;
         }
         button{
             border:none;
@@ -291,7 +298,10 @@
                 <option value="kimi">K</option>
             </select>
         </div>
-        <div id="onlineUsers"></div>
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <div id="onlineUsers" style="color:white; font-size:12px;">O: <span id="onlineList"></span></div>
+            <div id="lastSeenContainer"></div>
+        </div>
         <div>
             <button id="statusViewBtn">📋 Status <span class="status-dot" id="statusDot"></span></button>
             <button id="fullClearBtn">FCLR</button>
