@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusDot     = document.getElementById("statusDot");
     const onlineUsersEl = document.getElementById("onlineUsers");
     const onlineList    = document.getElementById("onlineList");
+    const lastSeenContainer = document.getElementById("lastSeenContainer");
     const imageInput    = document.getElementById("imageInput");
     const statusInput   = document.getElementById("statusInput");
     const sendBtn       = document.getElementById("sendBtn");
@@ -171,15 +172,33 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     async function displayOnlineUsers() {
-        if(!currentUser) return;
+        if(!currentUser) {
+            onlineUsersEl.style.display = "none";
+            lastSeenContainer.style.display = "none";
+            return;
+        }
         
+        const { data } = await supabase
+            .from('online_users')
+            .select('username')
+            .gt('last_seen', new Date(Date.now() - 10000).toISOString());
+            
+        if(data) {
+            const otherUsers = data
+                .filter(u => u.username !== currentUser)
+                .filter(u => u.username === 'sam' || u.username === 'kimi')
+                .map(u => u.username);
+            onlineUsersEl.style.display = "block";
+            onlineList.innerText = otherUsers.length > 0 ? otherUsers.join(', ') : 'none';
+        }
+
         const { data: allUsers } = await supabase
             .from('online_users')
             .select('username, last_seen')
             .in('username', ['sam', 'kimi']);
             
-        if(allUsers) {
-            let statusHtml = '';
+        if(allUsers && allUsers.length > 0) {
+            let lastSeenHtml = '';
             const now = new Date();
             
             for (const user of ['sam', 'kimi']) {
@@ -190,22 +209,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const isOnline = lastSeen && (now - new Date(lastSeen)) <= 10000;
                 
-                statusHtml += `<div style="margin: 2px 0; font-size: 12px;">`;
-                statusHtml += `<span style="color:${colors[user] || '#fff'};">●</span> ${user}: `;
-                
-                if (isOnline) {
-                    statusHtml += `<span style="color: #10b981;">Online</span>`;
-                } else if (lastSeen) {
-                    statusHtml += `last seen ${formatLastSeen(lastSeen)}`;
-                } else {
-                    statusHtml += `Offline`;
+                if (!isOnline && lastSeen) {
+                    lastSeenHtml += `<span style="color:${colors[user]};">${user}</span>: ${formatLastSeen(lastSeen)} `;
                 }
-                
-                statusHtml += `</div>`;
             }
             
-            onlineUsersEl.style.display = "block";
-            onlineUsersEl.innerHTML = statusHtml;
+            if (lastSeenHtml) {
+                lastSeenContainer.style.display = "block";
+                lastSeenContainer.innerHTML = lastSeenHtml;
+            } else {
+                lastSeenContainer.style.display = "none";
+            }
         }
     }
     
@@ -221,6 +235,10 @@ document.addEventListener('DOMContentLoaded', function() {
             loadMessages();
             await displayOnlineUsers();
             await checkAnyStatus();
+        } else {
+            currentUser = null;
+            onlineUsersEl.style.display = "none";
+            lastSeenContainer.style.display = "none";
         }
     });
     
@@ -620,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 await updateMyOnlineStatus();
                 await displayOnlineUsers();
             }
-        }, 10000);
+        }, 5000);
         
         setInterval(() => {
             if(currentUser) checkAnyStatus();
