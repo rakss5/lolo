@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ii</title>
+    <title>i</title>
     <style>
         *{box-sizing:border-box}
         html,body{height:100%;margin:0;overflow:hidden}
@@ -27,14 +27,12 @@
             display:flex;
         }
         
-        /* গুরুত্বপূর্ণ পরিবর্তন: column-reverse এবং scrollbar স্টাইল */
         #chatContainer, #statusContainer {
             flex: 1;
             overflow-y: auto;
             background: #1e293b;
             padding: 10px;
             display: flex;
-            /* flex-direction: column-reverse;  নিচ থেকে উপরে সাজানোর জন্য */
             -webkit-overflow-scrolling: touch;
         }
 
@@ -54,7 +52,7 @@
             font-size:15px;
             word-wrap:break-word;
             position: relative;
-            flex-shrink: 0; /* মেসেজ যাতে ছোট না হয়ে যায় */
+            flex-shrink: 0;
         }
         .msg:not(:has(img)){
             background:#334155;
@@ -119,41 +117,36 @@
             align-items: center;
             gap: 8px;
         }
-        /* স্ট্যাটাস আইটেমের জন্য স্টাইল */
-.status-item {
-    background: #1e293b;
-    align-self: center;
-    text-align: center;
-    margin-bottom: 12px;
-    width: 90%;
-    max-width: 380px;
-    border-radius: 20px;
-    padding: 15px;
-    border: 3px solid;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-/* স্ট্যাটাস মিডিয়ার জন্য স্টাইল */
-.status-media {
-    max-width: 100% !important;
-    max-height: 70vh !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain !important;
-    border-radius: 12px;
-    margin: 10px 0;
-}
-
-/* ছোট স্ক্রিনের জন্য */
-@media (max-width: 480px) {
-    .status-media {
-        max-height: 60vh !important;
-    }
-}
+        .status-item {
+            background: #1e293b;
+            align-self: center;
+            text-align: center;
+            margin-bottom: 12px;
+            width: 90%;
+            max-width: 380px;
+            border-radius: 20px;
+            padding: 15px;
+            border: 3px solid;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .status-media {
+            max-width: 100% !important;
+            max-height: 70vh !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain !important;
+            border-radius: 12px;
+            margin: 10px 0;
+        }
+        @media (max-width: 480px) {
+            .status-media {
+                max-height: 60vh !important;
+            }
+        }
         #input-area{
             background:#020617;
             padding:8px;
@@ -170,13 +163,10 @@
             color:white;
         }
         
-		
-		
-		.sendBtn, .imageBtn, .statusUploadBtn {
+        .sendBtn, .imageBtn, .statusUploadBtn {
             width:40px; height:40px; border-radius:50%; border:none;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
-        /* ===== TOPBAR ===== */
         #topBar{
             background:#020617;
             padding:6px 8px;
@@ -207,8 +197,11 @@
             font-size:13px;
             display:none;
             background:#1e293b;
-            padding:4px 10px;
+            padding:8px 12px;
             border-radius:16px;
+            min-width: 140px;
+            text-align: left;
+            line-height: 1.5;
         }
         button{
             border:none;
@@ -247,38 +240,31 @@
             display: none;
         }
 
+        .date-separator {
+            text-align: center;
+            margin: 15px 0;
+            font-size: 12px;
+            color: #94a3b8;
+            position: relative;
+            flex-shrink: 0;
+        }
 
+        .date-separator span {
+            background: #1e293b;
+            padding: 4px 12px;
+            border-radius: 12px;
+            display: inline-block;
+        }
 
-
-
-
-		/* Add this to your existing CSS */
-.date-separator {
-    text-align: center;
-    margin: 15px 0;
-    font-size: 12px;
-    color: #94a3b8;
-    position: relative;
-    flex-shrink: 0;
-}
-
-.date-separator span {
-    background: #1e293b;
-    padding: 4px 12px;
-    border-radius: 12px;
-    display: inline-block;
-}
-
-/* Update chatContainer styles */
-#chatContainer, #statusContainer {
-    flex: 1;
-    overflow-y: auto;
-    background: #1e293b;
-    padding: 10px;
-    display: flex;
-    flex-direction: column; /* Changed from column-reverse */
-    -webkit-overflow-scrolling: touch;
-}
+        #chatContainer, #statusContainer {
+            flex: 1;
+            overflow-y: auto;
+            background: #1e293b;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 </head>
 <body>
@@ -305,7 +291,7 @@
                 <option value="kimi">K</option>
             </select>
         </div>
-        <div id="onlineUsers" style="color:white; font-size:12px;">O: <span id="onlineList"></span></div>
+        <div id="onlineUsers"></div>
         <div>
             <button id="statusViewBtn">📋 Status <span class="status-dot" id="statusDot"></span></button>
             <button id="fullClearBtn">FCLR</button>
