@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ii</title>
+    <title>i</title>
     <style>
         *{box-sizing:border-box}
         html,body{height:100%;margin:0;overflow:hidden}
@@ -148,87 +148,143 @@
                 max-height: 60vh !important;
             }
         }
-        #input-area{
-            background:#020617;
-            padding:8px;
-            display:flex;
-            gap:6px;
-            border-top:1px solid #334155;
+
+        /* Input Area */
+        #input-area {
+            background: #020617;
+            padding: 8px;
+            display: flex;
+            gap: 6px;
+            border-top: 1px solid #334155;
             align-items: flex-end;
         }
-        #msg{
-            flex:1;
-            padding:12px;
-            border-radius:20px;
-            border:none;
-            background:#1e293b;
-            color:white;
-            font-family:Arial,sans-serif;
-            font-size:15px;
-            outline:none;
-            resize:none;
-            overflow-y:hidden;
-            line-height:1.4;
-            max-height:120px;
-            min-height:40px;
+
+        #msg {
+            flex: 1;
+            padding: 12px;
+            border-radius: 20px;
+            border: none;
+            background: #1e293b;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 15px;
+            outline: none;
+            resize: none;
+            overflow-y: hidden;
+            line-height: 1.4;
+            max-height: 120px;
+            min-height: 40px;
         }
+
         #msg::placeholder {
             color: #94a3b8;
         }
-        
-        .sendBtn, .imageBtn, .statusUploadBtn {
-            width:40px; 
-            height:40px; 
-            border-radius:50%; 
-            border:none;
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+
+        .sendBtn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             flex-shrink: 0;
-        }
-        #sendBtn {
             background: #3b82f6;
+            padding: 0;
         }
-        #imageBtn {
+
+        .sendBtn svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .imageBtn, .statusUploadBtn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 18px;
+        }
+
+        .imageBtn {
             background: #10b981;
         }
-        #statusUploadBtn {
+
+        .statusUploadBtn {
             background: #8b5cf6;
         }
-        #topBar{
-            background:#020617;
-            padding:6px 8px;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            border-top:1px solid #334155;
-            z-index:100;
+
+        /* Mobile optimization */
+        @media (max-width: 480px) {
+            #input-area {
+                padding: 6px;
+                gap: 4px;
+            }
+            
+            .sendBtn, .imageBtn, .statusUploadBtn {
+                width: 44px;
+                height: 44px;
+            }
+            
+            .sendBtn svg {
+                width: 22px;
+                height: 22px;
+            }
+            
+            .imageBtn, .statusUploadBtn {
+                font-size: 20px;
+            }
+            
+            #msg {
+                font-size: 16px;
+                padding: 12px 14px;
+            }
         }
-        #userSelect{
-            color:white;
-            font-size:13px;
-            display:flex;
-            align-items:center;
-            gap:5px;
+
+        #topBar {
+            background: #020617;
+            padding: 6px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #334155;
+            z-index: 100;
         }
-        #userSelect select{
-            background:#1e293b;
-            color:white;
-            border:1px solid #334155;
-            padding:6px;
-            border-radius:6px;
-            font-size:13px;
-            outline:none;
+
+        #userSelect {
+            color: white;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
-        #onlineUsers{
-            color:white;
-            font-size:13px;
-            display:none;
-            background:#1e293b;
-            padding:4px 10px;
-            border-radius:16px;
+
+        #userSelect select {
+            background: #1e293b;
+            color: white;
+            border: 1px solid #334155;
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
         }
+
+        #onlineUsers {
+            color: white;
+            font-size: 13px;
+            display: none;
+            background: #1e293b;
+            padding: 4px 10px;
+            border-radius: 16px;
+        }
+
         #lastSeenContainer {
             color: #94a3b8;
             font-size: 11px;
@@ -239,31 +295,38 @@
             display: none;
             text-align: center;
         }
-        button{
-            border:none;
-            border-radius:6px;
-            color:white;
-            padding:6px 10px;
-            cursor:pointer;
-            margin-left:4px;
-            font-size:13px;
+
+        button {
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 6px 10px;
+            cursor: pointer;
+            margin-left: 4px;
+            font-size: 13px;
             transition: transform 0.2s;
         }
+
         button:active { transform: scale(0.95); }
-        #fullClearBtn{ background:#dc2626; }
+
+        #fullClearBtn { background: #dc2626; }
+
         #statusViewBtn {
             background: #8b5cf6;
             position: relative;
             display: none;
         }
+
         @keyframes newStatusPulse {
             0% { transform: scale(1); background: #8b5cf6; }
             50% { transform: scale(1.05); background: #f97316; }
             100% { transform: scale(1); background: #8b5cf6; }
         }
+
         .new-status-animation {
             animation: newStatusPulse 1.5s infinite;
         }
+
         .status-dot {
             position: absolute;
             top: -3px;
@@ -328,24 +391,7 @@
             background: #3b82f6;
             border-radius: 16px;
             font-size: 12px;
-        }
-
-        /* Mobile optimizations */
-        @media (max-width: 480px) {
-            #input-area {
-                padding: 6px;
-                gap: 4px;
-            }
-            
-            .sendBtn, .imageBtn, .statusUploadBtn {
-                width: 44px;
-                height: 44px;
-            }
-            
-            #msg {
-                font-size: 16px;
-                padding: 12px 14px;
-            }
+            margin: 0;
         }
     </style>
 </head>
@@ -365,14 +411,25 @@
         <button id="sendPastedBtn">Send</button>
     </div>
     
+    <!-- Input Area -->
     <div id="input-area">
         <textarea id="msg" placeholder="Type a message" rows="1"></textarea>
-        <button class="sendBtn" id="sendBtn">📤</button>
-        <label for="imageInput"><button class="imageBtn" id="imageBtn">🖼️</button></label>
+        <button class="sendBtn" id="sendBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/>
+            </svg>
+        </button>
+        <label for="imageInput">
+            <button class="imageBtn" id="imageBtn">🖼️</button>
+        </label>
         <input type="file" id="imageInput" accept="image/*" style="display:none;">
-        <label for="statusInput"><button class="statusUploadBtn" id="statusUploadBtn">📋</button></label>
+        <label for="statusInput">
+            <button class="statusUploadBtn" id="statusUploadBtn">📋</button>
+        </label>
         <input type="file" id="statusInput" accept="image/*,video/*" style="display:none;">
     </div>
+
+    <!-- Top Bar -->
     <div id="topBar">
         <div id="userSelect">
             <select id="userDropdown">
