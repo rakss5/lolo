@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let showingStatus = false;
     let lastSeenStatusTime = null;
     let lastMessageDate = null;
-    let pendingPasteFile = null; // For mobile paste handling
+    let pendingPasteFile = null;
     
     const userDropdown  = document.getElementById("userDropdown");
     const msgInput      = document.getElementById("msg");
@@ -36,19 +36,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const pastePreview = document.getElementById('pastePreview');
     const previewImage = document.getElementById('previewImage');
     const sendPastedBtn = document.getElementById('sendPastedBtn');
-    
-    // Auto-resize textarea
-    msgInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-    });
-    
-    // Reset height on blur if empty
-    msgInput.addEventListener('blur', function() {
-        if (this.value === '') {
-            this.style.height = 'auto';
-        }
-    });
     
     function formatMessageTime(timestamp) {
         const date = new Date(timestamp);
@@ -146,35 +133,54 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function formatMessageText(text) {
         if (!text) return '';
-        const words = text.split(' ');
+        // Split by newlines first to preserve line breaks
+        const lines = text.split('\n');
         let formattedHtml = '';
-        words.forEach(word => {
-            if (isYouTubeLink(word)) {
-                formattedHtml += `<span class="message-link" onclick="window.open('${word}', '_blank')">${word}</span> `;
-            } else {
-                formattedHtml += word + ' ';
+        
+        lines.forEach((line, index) => {
+            const words = line.split(' ');
+            words.forEach(word => {
+                if (isYouTubeLink(word)) {
+                    formattedHtml += `<span class="message-link" onclick="window.open('${word}', '_blank')">${word}</span> `;
+                } else {
+                    formattedHtml += word + ' ';
+                }
+            });
+            // Add line break if not the last line
+            if (index < lines.length - 1) {
+                formattedHtml += '<br>';
             }
         });
+        
         return formattedHtml;
     }
     
-    // Handle Enter and Shift+Enter for mobile & desktop
+    // Handle Enter key
     msgInput.addEventListener("keydown", function(e) {
         if (e.key === "Enter") {
             if (e.shiftKey) {
-                // Shift+Enter: insert new line (default behavior)
-                return;
+                // Shift+Enter: Insert newline in the message
+                e.preventDefault();
+                
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                const value = this.value;
+                
+                // Insert newline at cursor position
+                this.value = value.substring(0, start) + '\n' + value.substring(end);
+                
+                // Move cursor after the newline
+                this.selectionStart = this.selectionEnd = start + 1;
             } else {
-                // Enter without Shift: send message
-                e.preventDefault(); // Prevent new line
+                // Regular Enter: Send message
+                e.preventDefault();
                 send();
             }
         }
     });
     
-    // Handle paste for both mobile and desktop
+    // Handle paste for images
     document.addEventListener("paste", async function(e) {
-        // Don't handle if we're in status view
         if (showingStatus) return;
         
         const items = e.clipboardData?.items;
@@ -190,23 +196,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 break;
             }
-        }
-    });
-    
-    // Handle image paste from mobile (using file input as fallback)
-    document.addEventListener('DOMContentLoaded', function() {
-        // For mobile browsers that support the Clipboard API
-        if (navigator.clipboard && navigator.clipboard.read) {
-            // Mobile paste handling - long press paste
-            msgInput.addEventListener('input', function(e) {
-                // Check if input contains image data (mobile sometimes pastes as file)
-                if (e.inputType === 'insertFromPaste' && e.dataTransfer?.files.length > 0) {
-                    const file = e.dataTransfer.files[0];
-                    if (file && file.type.startsWith('image/')) {
-                        handlePastedImage(file);
-                    }
-                }
-            });
         }
     });
     
@@ -289,7 +278,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         await supabase.from('messages').insert([message]);
         msgInput.value = '';
-        msgInput.style.height = 'auto';
         await updateMyOnlineStatus();
     }
     
@@ -419,7 +407,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const { error } = await supabase.from('messages').insert([message]);
         if(!error) {
             msgInput.value = '';
-            msgInput.style.height = 'auto';
             await updateMyOnlineStatus();
         }
     }
@@ -436,13 +423,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const longPressDuration = 500;
         
         if (isOwn) {
-            // Touch events for mobile
             div.addEventListener('touchstart', startPress, { passive: true });
             div.addEventListener('touchend', cancelPress);
             div.addEventListener('touchcancel', cancelPress);
             div.addEventListener('touchmove', cancelPress);
-            
-            // Mouse events for desktop
             div.addEventListener('mousedown', startPress);
             div.addEventListener('mouseup', cancelPress);
             div.addEventListener('mouseleave', cancelPress);
@@ -451,7 +435,6 @@ document.addEventListener('DOMContentLoaded', function() {
         function startPress(e) {
             if (isWithin20Minutes(msg.time)) {
                 pressTimer = setTimeout(() => {
-                    // Vibrate on mobile if supported
                     if (navigator.vibrate) navigator.vibrate(50);
                     showEditMenu(div, msg);
                 }, longPressDuration);
@@ -470,7 +453,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         function showEditMenu(element, message) {
-            // Remove any existing menu
             const existing = document.querySelector('.message-menu');
             if (existing) existing.remove();
             
@@ -499,7 +481,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             document.body.appendChild(menu);
             
-            // Close menu when tapping outside
             setTimeout(() => {
                 const closeMenu = (e) => {
                     if (!menu.contains(e.target) && e.target !== element) {
@@ -542,9 +523,15 @@ document.addEventListener('DOMContentLoaded', function() {
             content += `<div style="margin:5px 0;">`;
             content += `<img src="${msg.image_url}" style="width:100%; max-width:320px; max-height:400px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.3); cursor:pointer; display:block;" onclick="window.open(this.src)">`;
             content += `</div>`;
-            if (msg.text) content += `<div style="margin-top:5px;">${formatMessageText(msg.text)}</div>`;
+            if (msg.text) {
+                // Preserve line breaks in caption
+                const textWithBreaks = msg.text.replace(/\n/g, '<br>');
+                content += `<div style="margin-top:5px;">${textWithBreaks}</div>`;
+            }
         } else {
-            content += formatMessageText(msg.text);
+            // Preserve line breaks in message
+            const textWithBreaks = msg.text.replace(/\n/g, '<br>');
+            content += textWithBreaks;
         }
         
         if (msg.edited) content += ` <span class="edited-tag">(edited)</span>`;
@@ -633,7 +620,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         await supabase.from('statuses').insert([status]);
         msgInput.value = '';
-        msgInput.style.height = 'auto';
         statusInput.value = '';
         alert('Status uploaded!');
         await updateMyOnlineStatus();
@@ -648,7 +634,9 @@ document.addEventListener('DOMContentLoaded', function() {
         let content = `<strong style="color:${colors[status.username] || '#fff'};">${status.username}</strong><br>`;
         
         if(status.caption) {
-            content += `<div style="color:white; margin:8px 0;">${status.caption}</div>`;
+            // Preserve line breaks in caption
+            const captionWithBreaks = status.caption.replace(/\n/g, '<br>');
+            content += `<div style="color:white; margin:8px 0;">${captionWithBreaks}</div>`;
         }
         
         if(status.media_type === 'image') {
@@ -667,4 +655,139 @@ document.addEventListener('DOMContentLoaded', function() {
         if(!currentUser) return;
         
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
-        const { data }
+        const { data } = await supabase
+            .from('statuses')
+            .select('*')
+            .gt('time', oneDayAgo)
+            .order('time', { ascending: false });
+            
+        statusContainer.innerHTML = '';
+        if(data) data.forEach(addStatus);
+        
+        lastSeenStatusTime = new Date().toISOString();
+        statusDot.style.display = 'none';
+        statusViewBtn.classList.remove('new-status-animation');
+    }
+    
+    function listenToMessages() {
+        supabase
+            .channel('messages-channel')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
+                payload => {
+                    if(currentUser) {
+                        addDateSeparatorIfNeeded(payload.new.time);
+                        addMessage(payload.new, payload.new.username === currentUser);
+                    }
+                })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' },
+                () => { if(currentUser) loadMessages(); })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' },
+                () => { if(currentUser) loadMessages(); })
+            .subscribe();
+    }
+    
+    function listenToStatuses() {
+        supabase
+            .channel('statuses-channel')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'statuses' },
+                payload => {
+                    if(currentUser) {
+                        statusViewBtn.style.display = 'inline-block';
+                        if(showingStatus) {
+                            addStatus(payload.new);
+                        } else if(payload.new.username !== currentUser) {
+                            statusDot.style.display = 'block';
+                            statusViewBtn.classList.add('new-status-animation');
+                        }
+                    }
+                })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'statuses' },
+                () => {
+                    if(currentUser && showingStatus) loadStatuses();
+                    setTimeout(checkAnyStatus, 1000);
+                })
+            .subscribe();
+    }
+    
+    function listenToOnlineUsers() {
+        supabase
+            .channel('online-users-channel')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'online_users' },
+                async () => {
+                    if(currentUser) await displayOnlineUsers();
+                })
+            .subscribe();
+    }
+    
+    function toggleStatusView() {
+        if(!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
+        
+        showingStatus = !showingStatus;
+        
+        if(showingStatus) {
+            chatWrap.style.display = "none";
+            statusArea.style.display = "flex";
+            statusViewBtn.style.background = "#f97316";
+            loadStatuses();
+        } else {
+            chatWrap.style.display = "flex";
+            statusArea.style.display = "none";
+            statusViewBtn.style.background = "#8b5cf6";
+            loadMessages();
+            checkAnyStatus();
+        }
+    }
+    
+    async function fullClear() {
+        if(!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
+        
+        if(confirm('Delete ALL data?')) {
+            await supabase.from('messages').delete().neq('id', 0);
+            await supabase.from('statuses').delete().neq('id', 0);
+            chatContainer.innerHTML = '';
+            statusContainer.innerHTML = '';
+            lastMessageDate = null;
+            checkAnyStatus();
+        }
+    }
+    
+    function init() {
+        listenToMessages();
+        listenToStatuses();
+        listenToOnlineUsers();
+        
+        imageInput.addEventListener("change", handleImageUpload);
+        statusInput.addEventListener("change", handleStatusUpload);
+        
+        setInterval(async () => {
+            if(currentUser) {
+                await updateMyOnlineStatus();
+                await displayOnlineUsers();
+            }
+        }, 5000);
+        
+        setInterval(() => {
+            if(currentUser) checkAnyStatus();
+        }, 60000);
+        
+        window.addEventListener('beforeunload', () => {
+            if(currentUser) {
+                supabase.from('online_users').delete().eq('username', currentUser);
+            }
+        });
+    }
+    
+    sendBtn.addEventListener("click", send);
+    imageBtn.addEventListener("click", () => imageInput.click());
+    statusUploadBtn.addEventListener("click", () => statusInput.click());
+    statusViewBtn.addEventListener("click", toggleStatusView);
+    fullClearBtn.addEventListener("click", fullClear);
+    
+    init();
+});
