@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastMessageDate = null;
     let pendingPasteFile = null;
     
+    // Detect if mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
     const userDropdown = document.getElementById("userDropdown");
     const msgInput = document.getElementById("msg");
     const chatContainer = document.getElementById("chatContainer");
@@ -41,17 +44,40 @@ document.addEventListener('DOMContentLoaded', function() {
         this.style.height = Math.min(this.scrollHeight, 120) + 'px';
     });
 
-    // WhatsApp style Enter handling
+    // WhatsApp style Enter handling for both mobile and desktop
     msgInput.addEventListener("keydown", function(e) {
         if (e.key === "Enter") {
-            if (e.shiftKey) {
-                // Shift+Enter: new line (let textarea handle it)
+            if (isMobile) {
+                // Mobile: Enter creates new line (default behavior)
+                // Only send button sends message
                 return;
             } else {
-                // Enter: send message
-                e.preventDefault();
-                send();
+                // Desktop: 
+                if (e.shiftKey) {
+                    // Shift+Enter: new line (let textarea handle it)
+                    return;
+                } else {
+                    // Enter: send message
+                    e.preventDefault();
+                    send();
+                }
             }
+        }
+    });
+
+    // Mobile keyboard handling - when keyboard has "Go" or "Send" button
+    msgInput.addEventListener("keypress", function(e) {
+        if (isMobile && e.key === "Enter" && !e.shiftKey) {
+            // On some mobile keyboards, Enter might trigger send
+            // We'll prevent it and let the textarea handle new lines
+            e.preventDefault();
+            // Insert new line manually
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.substring(0, start) + '\n' + this.value.substring(end);
+            this.selectionStart = this.selectionEnd = start + 1;
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         }
     });
 
