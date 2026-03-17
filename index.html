@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>i</title>
+    <title>ii</title>
     <style>
         *{box-sizing:border-box}
         html,body{height:100%;margin:0;overflow:hidden}
@@ -33,6 +33,7 @@
             background: #1e293b;
             padding: 10px;
             display: flex;
+            flex-direction: column;
             -webkit-overflow-scrolling: touch;
         }
 
@@ -153,19 +154,50 @@
             display:flex;
             gap:6px;
             border-top:1px solid #334155;
+            align-items: flex-end;
         }
-        #msg{
-            flex:1;
-            padding:12px;
-            border-radius:20px;
-            border:none;
-            background:#1e293b;
-            color:white;
+        #msg {
+            flex: 1;
+            padding: 12px;
+            border-radius: 20px;
+            border: none;
+            background: #1e293b;
+            color: white;
+            font-family: Arial, sans-serif;
+            resize: none;
+            min-height: 40px;
+            max-height: 120px;
+            overflow-y: auto;
+            line-height: 1.4;
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        #msg::placeholder {
+            color: #94a3b8;
+            font-size: 14px;
         }
         
         .sendBtn, .imageBtn, .statusUploadBtn {
-            width:40px; height:40px; border-radius:50%; border:none;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 18px;
+            padding: 0;
+        }
+        #sendBtn {
+            background: #3b82f6;
+        }
+        #imageBtn {
+            background: #10b981;
+        }
+        #statusUploadBtn {
+            background: #8b5cf6;
         }
         #topBar{
             background:#020617;
@@ -263,14 +295,70 @@
             display: inline-block;
         }
 
-        #chatContainer, #statusContainer {
-            flex: 1;
-            overflow-y: auto;
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+            #input-area {
+                padding: 6px;
+                gap: 4px;
+            }
+            
+            .sendBtn, .imageBtn, .statusUploadBtn {
+                width: 44px;
+                height: 44px;
+                font-size: 20px;
+            }
+            
+            #msg {
+                font-size: 16px; /* Prevents zoom on iOS */
+                padding: 10px 14px;
+            }
+            
+            #topBar {
+                padding: 8px 6px;
+            }
+            
+            button {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+        }
+
+        /* Paste preview */
+        #pastePreview {
+            position: fixed;
+            bottom: 80px;
+            left: 10px;
+            right: 10px;
             background: #1e293b;
+            border-radius: 12px;
             padding: 10px;
-            display: flex;
-            flex-direction: column;
-            -webkit-overflow-scrolling: touch;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid #3b82f6;
+            z-index: 1000;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        #pastePreview img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        #pastePreview span {
+            color: white;
+            font-size: 14px;
+            flex: 1;
+        }
+        
+        #pastePreview button {
+            padding: 6px 12px;
+            background: #3b82f6;
+            border-radius: 16px;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -282,12 +370,20 @@
     <div id="statusArea" style="display:none;">
         <div id="statusContainer"></div>
     </div>
+    
+    <!-- Paste Preview -->
+    <div id="pastePreview">
+        <img id="previewImage" src="" alt="">
+        <span>Image ready to send</span>
+        <button id="sendPastedBtn">Send</button>
+    </div>
+    
     <div id="input-area">
-        <input id="msg" placeholder="Type message" autocomplete="off">
+        <textarea id="msg" placeholder="Type message (Enter to send)"></textarea>
         <button class="sendBtn" id="sendBtn">📤</button>
-        <label for="imageInput"><button class="imageBtn" id="imageBtn" style="background:#10b981; color:white;">🖼️</button></label>
+        <label for="imageInput"><button class="imageBtn" id="imageBtn" style="background:#10b981;">🖼️</button></label>
         <input type="file" id="imageInput" accept="image/*" style="display:none;">
-        <label for="statusInput"><button class="statusUploadBtn" id="statusUploadBtn" style="background:#8b5cf6; color:white;">📋</button></label>
+        <label for="statusInput"><button class="statusUploadBtn" id="statusUploadBtn" style="background:#8b5cf6;">📋</button></label>
         <input type="file" id="statusInput" accept="image/*,video/*" style="display:none;">
     </div>
     <div id="topBar">
