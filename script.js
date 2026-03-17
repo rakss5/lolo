@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let showingStatus = false;
     let lastSeenStatusTime = null;
     let lastMessageDate = null;
+    let pendingPasteFile = null; // For mobile paste handling
     
     const userDropdown  = document.getElementById("userDropdown");
     const msgInput      = document.getElementById("msg");
@@ -30,6 +31,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendBtn       = document.getElementById("sendBtn");
     const imageBtn      = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
+    
+    // Paste preview elements
+    const pastePreview = document.getElementById('pastePreview');
+    const previewImage = document.getElementById('previewImage');
+    const sendPastedBtn = document.getElementById('sendPastedBtn');
+    
+    // Auto-resize textarea
+    msgInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+    
+    // Reset height on blur if empty
+    msgInput.addEventListener('blur', function() {
+        if (this.value === '') {
+            this.style.height = 'auto';
+        }
+    });
     
     function formatMessageTime(timestamp) {
         const date = new Date(timestamp);
@@ -60,19 +79,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const now = new Date();
         const diffSeconds = Math.floor((now - lastSeen) / 1000);
         
-        // If online (within 10 seconds)
         if (diffSeconds <= 10) {
             return 'Online';
         }
         
-        // Format the actual time
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
         
         const lastSeenDate = new Date(lastSeen.getFullYear(), lastSeen.getMonth(), lastSeen.getDate());
         
-        // Format time as HH:MM AM/PM
         const timeString = lastSeen.toLocaleTimeString([], { 
             hour: '2-digit', 
             minute: '2-digit',
@@ -80,13 +96,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         if (lastSeenDate.getTime() === today.getTime()) {
-            // Today - show just time
             return `Today at ${timeString}`;
         } else if (lastSeenDate.getTime() === yesterday.getTime()) {
-            // Yesterday - show "Yesterday at time"
             return `Yesterday at ${timeString}`;
         } else {
-            // Older - show date and time
             const dateString = lastSeen.toLocaleDateString([], { 
                 day: 'numeric', 
                 month: 'short',
@@ -143,6 +156,141 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         return formattedHtml;
+    }
+    
+    // Handle Enter and Shift+Enter for mobile & desktop
+    msgInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            if (e.shiftKey) {
+                // Shift+Enter: insert new line (default behavior)
+                return;
+            } else {
+                // Enter without Shift: send message
+                e.preventDefault(); // Prevent new line
+                send();
+            }
+        }
+    });
+    
+    // Handle paste for both mobile and desktop
+    document.addEventListener("paste", async function(e) {
+        // Don't handle if we're in status view
+        if (showingStatus) return;
+        
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+                
+                const file = items[i].getAsFile();
+                if (file) {
+                    await handlePastedImage(file);
+                }
+                break;
+            }
+        }
+    });
+    
+    // Handle image paste from mobile (using file input as fallback)
+    document.addEventListener('DOMContentLoaded', function() {
+        // For mobile browsers that support the Clipboard API
+        if (navigator.clipboard && navigator.clipboard.read) {
+            // Mobile paste handling - long press paste
+            msgInput.addEventListener('input', function(e) {
+                // Check if input contains image data (mobile sometimes pastes as file)
+                if (e.inputType === 'insertFromPaste' && e.dataTransfer?.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        handlePastedImage(file);
+                    }
+                }
+            });
+        }
+    });
+    
+    async function handlePastedImage(file) {
+        if (!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
+        
+        if (!file.type.startsWith('image/')) {
+            alert('Please paste an image file');
+            return;
+        }
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImage.src = e.target.result;
+            pastePreview.style.display = 'flex';
+            pendingPasteFile = file;
+        };
+        reader.readAsDataURL(file);
+        
+        // Auto-hide preview after 10 seconds
+        setTimeout(() => {
+            if (pendingPasteFile === file) {
+                pastePreview.style.display = 'none';
+                pendingPasteFile = null;
+            }
+        }, 10000);
+    }
+    
+    // Send pasted image
+    sendPastedBtn.addEventListener('click', async function() {
+        if (!pendingPasteFile) {
+            pastePreview.style.display = 'none';
+            return;
+        }
+        
+        pastePreview.style.display = 'none';
+        await uploadImage(pendingPasteFile);
+        pendingPasteFile = null;
+    });
+    
+    // Hide preview if clicked outside
+    document.addEventListener('click', function(e) {
+        if (!pastePreview.contains(e.target) && e.target !== msgInput) {
+            pastePreview.style.display = 'none';
+            pendingPasteFile = null;
+        }
+    });
+    
+    async function uploadImage(file) {
+        if (!currentUser) return;
+        
+        const fileExt = file.name ? file.name.split('.').pop() : 'png';
+        const fileName = `chat_${Date.now()}.${fileExt}`;
+        const filePath = `${currentUser}/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('media')
+            .upload(filePath, file);
+            
+        if (uploadError) {
+            alert('Upload failed: ' + uploadError.message);
+            return;
+        }
+        
+        const { data: { publicUrl } } = supabase.storage
+            .from('media')
+            .getPublicUrl(filePath);
+            
+        const message = {
+            username: currentUser,
+            text: msgInput.value.trim() || '',
+            image_url: publicUrl,
+            time: new Date().toISOString(),
+            edited: false
+        };
+        
+        await supabase.from('messages').insert([message]);
+        msgInput.value = '';
+        msgInput.style.height = 'auto';
+        await updateMyOnlineStatus();
     }
     
     async function checkAnyStatus() {
@@ -257,11 +405,13 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Please select a user first');
             return;
         }
-        if(!msgInput.value.trim()) return;
+        
+        const text = msgInput.value.trim();
+        if (!text) return;
         
         const message = {
             username: currentUser,
-            text: msgInput.value.trim(),
+            text: text,
             time: new Date().toISOString(),
             edited: false
         };
@@ -269,6 +419,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const { error } = await supabase.from('messages').insert([message]);
         if(!error) {
             msgInput.value = '';
+            msgInput.style.height = 'auto';
             await updateMyOnlineStatus();
         }
     }
@@ -285,17 +436,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const longPressDuration = 500;
         
         if (isOwn) {
-            div.addEventListener('mousedown', startPress);
+            // Touch events for mobile
             div.addEventListener('touchstart', startPress, { passive: true });
-            div.addEventListener('mouseup', cancelPress);
             div.addEventListener('touchend', cancelPress);
-            div.addEventListener('mouseleave', cancelPress);
             div.addEventListener('touchcancel', cancelPress);
+            div.addEventListener('touchmove', cancelPress);
+            
+            // Mouse events for desktop
+            div.addEventListener('mousedown', startPress);
+            div.addEventListener('mouseup', cancelPress);
+            div.addEventListener('mouseleave', cancelPress);
         }
         
         function startPress(e) {
             if (isWithin20Minutes(msg.time)) {
                 pressTimer = setTimeout(() => {
+                    // Vibrate on mobile if supported
+                    if (navigator.vibrate) navigator.vibrate(50);
                     showEditMenu(div, msg);
                 }, longPressDuration);
             }
@@ -313,6 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         function showEditMenu(element, message) {
+            // Remove any existing menu
             const existing = document.querySelector('.message-menu');
             if (existing) existing.remove();
             
@@ -341,14 +499,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             document.body.appendChild(menu);
             
+            // Close menu when tapping outside
             setTimeout(() => {
-                const close = e => {
+                const closeMenu = (e) => {
                     if (!menu.contains(e.target) && e.target !== element) {
                         menu.remove();
-                        document.removeEventListener('click', close);
+                        document.removeEventListener('click', closeMenu);
+                        document.removeEventListener('touchstart', closeMenu);
                     }
                 };
-                document.addEventListener('click', close);
+                document.addEventListener('click', closeMenu);
+                document.addEventListener('touchstart', closeMenu);
             }, 100);
         }
         
@@ -430,36 +591,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const fileExt = file.name.split('.').pop();
-        const fileName = `chat_${Date.now()}.${fileExt}`;
-        const filePath = `${currentUser}/${fileName}`;
-        
-        const { error: uploadError } = await supabase.storage
-            .from('media')
-            .upload(filePath, file);
-            
-        if(uploadError) {
-            alert('Upload failed: ' + uploadError.message);
-            imageInput.value = '';
-            return;
-        }
-        
-        const { data: { publicUrl } } = supabase.storage
-            .from('media')
-            .getPublicUrl(filePath);
-            
-        const message = {
-            username: currentUser,
-            text: msgInput.value.trim() || '',
-            image_url: publicUrl,
-            time: new Date().toISOString(),
-            edited: false
-        };
-        
-        await supabase.from('messages').insert([message]);
-        msgInput.value = '';
+        await uploadImage(file);
         imageInput.value = '';
-        await updateMyOnlineStatus();
     }
     
     async function handleStatusUpload(e) {
@@ -500,6 +633,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         await supabase.from('statuses').insert([status]);
         msgInput.value = '';
+        msgInput.style.height = 'auto';
         statusInput.value = '';
         alert('Status uploaded!');
         await updateMyOnlineStatus();
@@ -533,140 +667,4 @@ document.addEventListener('DOMContentLoaded', function() {
         if(!currentUser) return;
         
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
-        const { data } = await supabase
-            .from('statuses')
-            .select('*')
-            .gt('time', oneDayAgo)
-            .order('time', { ascending: false });
-            
-        statusContainer.innerHTML = '';
-        if(data) data.forEach(addStatus);
-        
-        lastSeenStatusTime = new Date().toISOString();
-        statusDot.style.display = 'none';
-        statusViewBtn.classList.remove('new-status-animation');
-    }
-    
-    function listenToMessages() {
-        supabase
-            .channel('messages-channel')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
-                payload => {
-                    if(currentUser) {
-                        addDateSeparatorIfNeeded(payload.new.time);
-                        addMessage(payload.new, payload.new.username === currentUser);
-                    }
-                })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' },
-                () => { if(currentUser) loadMessages(); })
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' },
-                () => { if(currentUser) loadMessages(); })
-            .subscribe();
-    }
-    
-    function listenToStatuses() {
-        supabase
-            .channel('statuses-channel')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'statuses' },
-                payload => {
-                    if(currentUser) {
-                        statusViewBtn.style.display = 'inline-block';
-                        if(showingStatus) {
-                            addStatus(payload.new);
-                        } else if(payload.new.username !== currentUser) {
-                            statusDot.style.display = 'block';
-                            statusViewBtn.classList.add('new-status-animation');
-                        }
-                    }
-                })
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'statuses' },
-                () => {
-                    if(currentUser && showingStatus) loadStatuses();
-                    setTimeout(checkAnyStatus, 1000);
-                })
-            .subscribe();
-    }
-    
-    function listenToOnlineUsers() {
-        supabase
-            .channel('online-users-channel')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'online_users' },
-                async () => {
-                    if(currentUser) await displayOnlineUsers();
-                })
-            .subscribe();
-    }
-    
-    function toggleStatusView() {
-        if(!currentUser) {
-            alert('Please select a user first');
-            return;
-        }
-        
-        showingStatus = !showingStatus;
-        
-        if(showingStatus) {
-            chatWrap.style.display = "none";
-            statusArea.style.display = "flex";
-            statusViewBtn.style.background = "#f97316";
-            loadStatuses();
-        } else {
-            chatWrap.style.display = "flex";
-            statusArea.style.display = "none";
-            statusViewBtn.style.background = "#8b5cf6";
-            loadMessages();
-            checkAnyStatus();
-        }
-    }
-    
-    async function fullClear() {
-        if(!currentUser) {
-            alert('Please select a user first');
-            return;
-        }
-        
-        if(confirm('Delete ALL data?')) {
-            await supabase.from('messages').delete().neq('id', 0);
-            await supabase.from('statuses').delete().neq('id', 0);
-            chatContainer.innerHTML = '';
-            statusContainer.innerHTML = '';
-            lastMessageDate = null;
-            checkAnyStatus();
-        }
-    }
-    
-    function init() {
-        listenToMessages();
-        listenToStatuses();
-        listenToOnlineUsers();
-        
-        imageInput.addEventListener("change", handleImageUpload);
-        statusInput.addEventListener("change", handleStatusUpload);
-        
-        setInterval(async () => {
-            if(currentUser) {
-                await updateMyOnlineStatus();
-                await displayOnlineUsers();
-            }
-        }, 5000);
-        
-        setInterval(() => {
-            if(currentUser) checkAnyStatus();
-        }, 60000);
-        
-        window.addEventListener('beforeunload', () => {
-            if(currentUser) {
-                supabase.from('online_users').delete().eq('username', currentUser);
-            }
-        });
-    }
-    
-    sendBtn.addEventListener("click", send);
-    imageBtn.addEventListener("click", () => imageInput.click());
-    statusUploadBtn.addEventListener("click", () => statusInput.click());
-    statusViewBtn.addEventListener("click", toggleStatusView);
-    fullClearBtn.addEventListener("click", fullClear);
-    msgInput.addEventListener("keydown", e => { if(e.key === "Enter") send(); });
-    
-    init();
-});
+        const { data }
