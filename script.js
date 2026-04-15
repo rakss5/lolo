@@ -17,6 +17,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let messageCache = new Map();
     let isLoading = false;
     
+    // Online status tracking
+    let onlineStatusCache = {
+        sam: { isOnline: false, lastChecked: null },
+        kimi: { isOnline: false, lastChecked: null }
+    };
+    
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     
     const userDropdown = document.getElementById("userDropdown");
@@ -65,7 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
         this.style.height = Math.min(this.scrollHeight, 120) + 'px';
     });
 
-    // Enter handling
     msgInput.addEventListener("keydown", function(e) {
         if (e.key === "Enter") {
             if (isMobile) {
@@ -81,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Format time
     function formatMessageTime(timestamp) {
         const date = new Date(timestamp);
         const now = new Date();
@@ -104,7 +108,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Format last seen
     function formatLastSeen(timestamp) {
         if (!timestamp) return 'Offline';
         
@@ -112,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const now = new Date();
         const diffSeconds = Math.floor((now - lastSeen) / 1000);
         
-        if (diffSeconds <= 10) return 'Online';
+        if (diffSeconds <= 30) return 'Online';
         
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const yesterday = new Date(today);
@@ -122,20 +125,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const timeString = lastSeen.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         
         if (lastSeenDate.getTime() === today.getTime()) {
-            return `Today at ${timeString}`;
+            return `Last seen today at ${timeString}`;
         } else if (lastSeenDate.getTime() === yesterday.getTime()) {
-            return `Yesterday at ${timeString}`;
+            return `Last seen yesterday at ${timeString}`;
         } else {
             const dateString = lastSeen.toLocaleDateString([], { 
                 day: 'numeric', 
                 month: 'short',
                 year: lastSeen.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
             });
-            return `${dateString} at ${timeString}`;
+            return `Last seen ${dateString} at ${timeString}`;
         }
     }
 
-    // Add date separator
     function addDateSeparatorIfNeeded(messageTime) {
         const messageDate = new Date(messageTime);
         const messageDateStr = messageDate.toDateString();
@@ -166,13 +168,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Check YouTube links
     function isYouTubeLink(text) {
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
         return youtubeRegex.test(text.trim());
     }
 
-    // Format message text
     function formatMessageText(text) {
         if (!text) return '';
         const lines = text.split('\n');
@@ -195,7 +195,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return formattedHtml;
     }
 
-    // Handle paste
     document.addEventListener("paste", async function(e) {
         if (showingStatus) return;
         
@@ -292,7 +291,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Check status
     async function checkAnyStatus() {
         if (!currentUser) return;
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
@@ -321,7 +319,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Update online status
     async function updateMyOnlineStatus() {
         if (!currentUser) return;
         await supabase.from('online_users').upsert({
@@ -330,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Display online users
+    // Flicker-free online status display
     async function displayOnlineUsers() {
         if (!currentUser) {
             onlineUsersEl.style.display = "none";
@@ -338,51 +335,77 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const { data } = await supabase
-            .from('online_users')
-            .select('username')
-            .gt('last_seen', new Date(Date.now() - 10000).toISOString());
-            
-        if (data) {
-            const otherUsers = data
-                .filter(u => u.username !== currentUser)
-                .filter(u => u.username === 'sam' || u.username === 'kimi')
-                .map(u => u.username);
-            onlineUsersEl.style.display = "block";
-            onlineList.innerText = otherUsers.length > 0 ? otherUsers.join(', ') : 'none';
-        }
-
+        // 30 seconds threshold for online/offline
+        const ONLINE_THRESHOLD = 30000; // 30 seconds
+        
         const { data: allUsers } = await supabase
             .from('online_users')
             .select('username, last_seen')
             .in('username', ['sam', 'kimi']);
+        
+        if (!allUsers) return;
+        
+        const now = new Date();
+        let onlineListArray = [];
+        let lastSeenHtml = '';
+        
+        for (const user of ['sam', 'kimi']) {
+            if (user === currentUser) continue;
             
-        if (allUsers && allUsers.length > 0) {
-            let lastSeenHtml = '';
-            const now = new Date();
+            const userData = allUsers.find(u => u.username === user);
+            const lastSeen = userData?.last_seen;
             
-            for (const user of ['sam', 'kimi']) {
-                if (user === currentUser) continue;
+            if (!lastSeen) {
+                // Never seen before
+                if (onlineStatusCache[user].isOnline !== false) {
+                    onlineStatusCache[user].isOnline = false;
+                    onlineStatusCache[user].lastChecked = now;
+                }
+                lastSeenHtml += `<span style="color:${colors[user]};">${user}</span>: Offline `;
+                continue;
+            }
+            
+            const timeDiff = now - new Date(lastSeen);
+            const isActuallyOnline = timeDiff <= ONLINE_THRESHOLD;
+            
+            // Update cache with debounce - prevents flickering
+            if (onlineStatusCache[user].isOnline !== isActuallyOnline) {
+                const lastChange = onlineStatusCache[user].lastChecked;
+                const timeSinceLastChange = lastChange ? now - lastChange : Infinity;
                 
-                const userData = allUsers.find(u => u.username === user);
-                const lastSeen = userData?.last_seen;
-                const isOnline = lastSeen && (now - new Date(lastSeen)) <= 10000;
-                
-                if (!isOnline && lastSeen) {
-                    lastSeenHtml += `<span style="color:${colors[user]};">${user}</span>: ${formatLastSeen(lastSeen)} `;
+                // Only change status if stable for at least 5 seconds
+                if (timeSinceLastChange >= 5000 || !lastChange) {
+                    onlineStatusCache[user].isOnline = isActuallyOnline;
+                    onlineStatusCache[user].lastChecked = now;
+                } else {
+                    // Use cached value to prevent flickering
+                    isActuallyOnline = onlineStatusCache[user].isOnline;
                 }
             }
             
-            if (lastSeenHtml) {
-                lastSeenContainer.style.display = "block";
-                lastSeenContainer.innerHTML = lastSeenHtml;
+            if (onlineStatusCache[user].isOnline) {
+                onlineListArray.push(user);
             } else {
-                lastSeenContainer.style.display = "none";
+                lastSeenHtml += `<span style="color:${colors[user]};">${user}</span>: ${formatLastSeen(lastSeen)} `;
             }
+        }
+        
+        // Update UI
+        onlineUsersEl.style.display = "block";
+        if (onlineListArray.length > 0) {
+            onlineList.innerText = onlineListArray.join(', ');
+        } else {
+            onlineList.innerText = 'none';
+        }
+        
+        if (lastSeenHtml) {
+            lastSeenContainer.style.display = "block";
+            lastSeenContainer.innerHTML = lastSeenHtml;
+        } else {
+            lastSeenContainer.style.display = "none";
         }
     }
 
-    // User selection
     userDropdown.addEventListener("change", async (e) => {
         if (e.target.value) {
             if (currentUser) {
@@ -412,7 +435,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Send message
     async function send() {
         if (!currentUser) {
             alert('Please select a user first');
@@ -429,7 +451,6 @@ document.addEventListener('DOMContentLoaded', function() {
             edited: false
         };
         
-        // Show sending indicator
         const tempId = Date.now();
         const tempDiv = document.createElement('div');
         tempDiv.className = 'msg own';
@@ -451,7 +472,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Add message
     function addMessage(msg, isOwn) {
         if (messageCache.has(msg.id)) return;
         messageCache.set(msg.id, true);
@@ -564,16 +584,30 @@ document.addEventListener('DOMContentLoaded', function() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // Load messages
-    async function loadMessages() {
+    function showLoadingIndicator() {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'refreshLoadingIndicator';
+        loadingDiv.className = 'loading-indicator';
+        loadingDiv.innerHTML = '<span class="refresh-loading"></span> Refreshing messages...';
+        chatContainer.appendChild(loadingDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function hideLoadingIndicator() {
+        const loadingDiv = document.getElementById('refreshLoadingIndicator');
+        if (loadingDiv) {
+            loadingDiv.remove();
+        }
+    }
+
+    async function loadMessages(showLoading = true) {
         if (!currentUser || isLoading) return;
         
         isLoading = true;
         
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'loading-indicator';
-        loadingDiv.innerText = 'Loading messages...';
-        chatContainer.appendChild(loadingDiv);
+        if (showLoading) {
+            showLoadingIndicator();
+        }
         
         try {
             const { data, error } = await supabase
@@ -606,28 +640,28 @@ document.addEventListener('DOMContentLoaded', function() {
             chatContainer.appendChild(errorDiv);
         } finally {
             isLoading = false;
-            loadingDiv.remove();
+            if (showLoading) {
+                hideLoadingIndicator();
+            }
         }
     }
 
-    // Refresh messages
     async function refreshMessages() {
         if (!currentUser) {
             alert('Please select a user first');
             return;
         }
         
-        refreshTopBtn.style.transform = 'rotate(360deg)';
-        refreshTopBtn.style.transition = 'transform 0.5s';
+        // Add rotation animation
+        refreshTopBtn.classList.add('spin-animation');
         
         await loadMessages();
         
         setTimeout(() => {
-            refreshTopBtn.style.transform = 'rotate(0deg)';
+            refreshTopBtn.classList.remove('spin-animation');
         }, 500);
     }
 
-    // Handle image upload
     async function handleImageUpload(e) {
         if (!currentUser) {
             alert('Please select a user first');
@@ -646,7 +680,6 @@ document.addEventListener('DOMContentLoaded', function() {
         imageInput.value = '';
     }
 
-    // Handle status upload
     async function handleStatusUpload(e) {
         if (!currentUser) {
             alert('Please select a user first');
@@ -697,7 +730,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Add status
     function addStatus(status) {
         const div = document.createElement('div');
         div.className = 'status-item';
@@ -720,7 +752,6 @@ document.addEventListener('DOMContentLoaded', function() {
         statusContainer.prepend(div);
     }
 
-    // Load statuses
     async function loadStatuses() {
         if (!currentUser) return;
         
@@ -751,7 +782,6 @@ document.addEventListener('DOMContentLoaded', function() {
         statusViewBtn.classList.remove('new-status-animation');
     }
 
-    // Toggle status view
     function toggleStatusView() {
         if (!currentUser) {
             alert('Please select a user first');
@@ -774,7 +804,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Full clear
     async function fullClear() {
         if (!currentUser) {
             alert('Please select a user first');
@@ -798,7 +827,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Listen to realtime updates
     function listenToMessages() {
         if (currentChannel) {
             supabase.removeChannel(currentChannel);
@@ -825,11 +853,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         loadMessages(); 
                     }
                 })
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('Subscribed to messages channel');
-                }
-            });
+            .subscribe();
     }
 
     function listenToStatuses() {
@@ -865,7 +889,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .subscribe();
     }
 
-    // Initialize
     function init() {
         listenToMessages();
         listenToStatuses();
@@ -875,12 +898,13 @@ document.addEventListener('DOMContentLoaded', function() {
         statusInput.addEventListener("change", handleStatusUpload);
         refreshTopBtn.addEventListener("click", refreshMessages);
         
+        // Update online status every 15 seconds (less frequent to reduce flickering)
         setInterval(async () => {
             if (currentUser) {
                 await updateMyOnlineStatus();
                 await displayOnlineUsers();
             }
-        }, 5000);
+        }, 15000); // 15 seconds
         
         setInterval(() => {
             if (currentUser) checkAnyStatus();
@@ -895,7 +919,6 @@ document.addEventListener('DOMContentLoaded', function() {
         loadUserSelection();
     }
 
-    // Event listeners
     sendBtn.addEventListener("click", send);
     imageBtn.addEventListener("click", () => imageInput.click());
     statusUploadBtn.addEventListener("click", () => statusInput.click());
