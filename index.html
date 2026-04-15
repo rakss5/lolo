@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ii</title>
+    <title>i</title>
     <style>
         *{box-sizing:border-box}
         html,body{height:100%;margin:0;overflow:hidden}
@@ -309,6 +309,7 @@
         button:active { transform: scale(0.95); }
 
         #fullClearBtn { background: #dc2626; }
+        #refreshTopBtn { background: #3b82f6; }
 
         #statusViewBtn {
             background: #8b5cf6;
@@ -392,6 +393,14 @@
             font-size: 12px;
             margin: 0;
         }
+
+        /* Loading indicator */
+        .loading-indicator {
+            text-align: center;
+            color: #94a3b8;
+            padding: 10px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -412,8 +421,7 @@
     
     <!-- Input Area -->
     <div id="input-area">
-
-       <label for="imageInput">
+        <label for="imageInput">
             <button class="imageBtn" id="imageBtn">🖼️</button>
         </label>
         <input type="file" id="imageInput" accept="image/*" style="display:none;">
@@ -428,14 +436,13 @@
                 <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/>
             </svg>
         </button>
- 
     </div>
 
     <!-- Top Bar -->
     <div id="topBar">
-        
         <div>
             <button id="statusViewBtn">📋 Status <span class="status-dot" id="statusDot"></span></button>
+            <button id="refreshTopBtn">🔄 RF</button>
             <button id="fullClearBtn">FC</button>
         </div>
         
@@ -451,7 +458,6 @@
                 <option value="kimi">K</option>
             </select>
         </div>
-        
     </div>
 </div>
 
