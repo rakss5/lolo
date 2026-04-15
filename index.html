@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ii</title>
+    <title>i</title>
     <style>
         *{box-sizing:border-box}
         html,body{height:100%;margin:0;overflow:hidden}
@@ -309,7 +309,26 @@
         button:active { transform: scale(0.95); }
 
         #fullClearBtn { background: #dc2626; }
-        #refreshTopBtn { background: #3b82f6; }
+        #refreshTopBtn { 
+            background: #3b82f6;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        /* Rotation animation for refresh button */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .spin-animation {
+            animation: spin 0.5s ease-in-out !important;
+        }
 
         #statusViewBtn {
             background: #8b5cf6;
@@ -398,8 +417,22 @@
         .loading-indicator {
             text-align: center;
             color: #94a3b8;
-            padding: 10px;
-            font-size: 12px;
+            padding: 20px;
+            font-size: 14px;
+            background: #1e293b;
+            border-radius: 10px;
+            margin: 10px;
+        }
+        
+        .refresh-loading {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #fff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 5px;
         }
     </style>
 </head>
@@ -441,7 +474,7 @@
     <!-- Top Bar -->
     <div id="topBar">
         <div>
-            <button id="statusViewBtn">📋 Status <span class="status-dot" id="statusDot"></span></button>
+            <button id="statusViewBtn">📋<span class="status-dot" id="statusDot"></span></button>
             <button id="refreshTopBtn">🔄</button>
             <button id="fullClearBtn">FC</button>
         </div>
