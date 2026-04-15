@@ -13,8 +13,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastSeenStatusTime = null;
     let lastMessageDate = null;
     let pendingPasteFile = null;
+    let currentChannel = null;
+    let messageCache = new Map();
+    let isLoading = false;
     
-    // Detect if mobile
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     
     const userDropdown = document.getElementById("userDropdown");
@@ -24,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatWrap = document.getElementById("chatWrap");
     const statusArea = document.getElementById("statusArea");
     const fullClearBtn = document.getElementById("fullClearBtn");
+    const refreshTopBtn = document.getElementById("refreshTopBtn");
     const statusViewBtn = document.getElementById("statusViewBtn");
     const statusDot = document.getElementById("statusDot");
     const onlineUsersEl = document.getElementById("onlineUsers");
@@ -38,46 +41,43 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewImage = document.getElementById('previewImage');
     const sendPastedBtn = document.getElementById('sendPastedBtn');
 
+    // Save user selection
+    function saveUserSelection(user) {
+        if (user) {
+            localStorage.setItem('selectedUser', user);
+        } else {
+            localStorage.removeItem('selectedUser');
+        }
+    }
+
+    // Load user selection
+    function loadUserSelection() {
+        const savedUser = localStorage.getItem('selectedUser');
+        if (savedUser && (savedUser === 'sam' || savedUser === 'kimi')) {
+            userDropdown.value = savedUser;
+            userDropdown.dispatchEvent(new Event('change'));
+        }
+    }
+
     // Auto-resize textarea
     msgInput.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = Math.min(this.scrollHeight, 120) + 'px';
     });
 
-    // WhatsApp style Enter handling for both mobile and desktop
+    // Enter handling
     msgInput.addEventListener("keydown", function(e) {
         if (e.key === "Enter") {
             if (isMobile) {
-                // Mobile: Enter creates new line (default behavior)
-                // Only send button sends message
                 return;
             } else {
-                // Desktop: 
                 if (e.shiftKey) {
-                    // Shift+Enter: new line (let textarea handle it)
                     return;
                 } else {
-                    // Enter: send message
                     e.preventDefault();
                     send();
                 }
             }
-        }
-    });
-
-    // Mobile keyboard handling - when keyboard has "Go" or "Send" button
-    msgInput.addEventListener("keypress", function(e) {
-        if (isMobile && e.key === "Enter" && !e.shiftKey) {
-            // On some mobile keyboards, Enter might trigger send
-            // We'll prevent it and let the textarea handle new lines
-            e.preventDefault();
-            // Insert new line manually
-            const start = this.selectionStart;
-            const end = this.selectionEnd;
-            this.value = this.value.substring(0, start) + '\n' + this.value.substring(end);
-            this.selectionStart = this.selectionEnd = start + 1;
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         }
     });
 
@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return youtubeRegex.test(text.trim());
     }
 
-    // Format message with line breaks
+    // Format message text
     function formatMessageText(text) {
         if (!text) return '';
         const lines = text.split('\n');
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return formattedHtml;
     }
 
-    // Handle image paste
+    // Handle paste
     document.addEventListener("paste", async function(e) {
         if (showingStatus) return;
         
@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.addEventListener('click', function(e) {
-        if (!pastePreview.contains(e.target) && e.target !== msgInput) {
+        if (pastePreview && !pastePreview.contains(e.target) && e.target !== msgInput) {
             pastePreview.style.display = 'none';
             pendingPasteFile = null;
         }
@@ -282,10 +282,14 @@ document.addEventListener('DOMContentLoaded', function() {
             edited: false
         };
         
-        await supabase.from('messages').insert([message]);
-        msgInput.value = '';
-        msgInput.style.height = 'auto';
-        await updateMyOnlineStatus();
+        const { error } = await supabase.from('messages').insert([message]);
+        if (!error) {
+            msgInput.value = '';
+            msgInput.style.height = 'auto';
+            await updateMyOnlineStatus();
+        } else {
+            alert('Failed to send message: ' + error.message);
+        }
     }
 
     // Check status
@@ -382,19 +386,29 @@ document.addEventListener('DOMContentLoaded', function() {
     userDropdown.addEventListener("change", async (e) => {
         if (e.target.value) {
             if (currentUser) {
+                if (currentChannel) {
+                    await supabase.removeChannel(currentChannel);
+                }
                 await supabase.from('online_users').delete().eq('username', currentUser);
             }
             currentUser = e.target.value;
+            saveUserSelection(currentUser);
             await updateMyOnlineStatus();
             chatContainer.innerHTML = '';
             lastMessageDate = null;
-            loadMessages();
+            messageCache.clear();
+            await loadMessages();
             await displayOnlineUsers();
             await checkAnyStatus();
+            listenToMessages();
         } else {
             currentUser = null;
+            saveUserSelection(null);
             onlineUsersEl.style.display = "none";
             lastSeenContainer.style.display = "none";
+            if (currentChannel) {
+                supabase.removeChannel(currentChannel);
+            }
         }
     });
 
@@ -415,16 +429,33 @@ document.addEventListener('DOMContentLoaded', function() {
             edited: false
         };
         
+        // Show sending indicator
+        const tempId = Date.now();
+        const tempDiv = document.createElement('div');
+        tempDiv.className = 'msg own';
+        tempDiv.id = `temp-${tempId}`;
+        tempDiv.innerHTML = `<strong style="color:${colors[currentUser]};">${currentUser}</strong><br>${text.replace(/\n/g, '<br>')}<div class="time">Sending...</div>`;
+        chatContainer.appendChild(tempDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        
         const { error } = await supabase.from('messages').insert([message]);
+        
         if (!error) {
             msgInput.value = '';
             msgInput.style.height = 'auto';
             await updateMyOnlineStatus();
+            tempDiv.remove();
+        } else {
+            tempDiv.innerHTML = `<strong style="color:${colors[currentUser]};">${currentUser}</strong><br>${text.replace(/\n/g, '<br>')}<div class="time">Failed to send ❌</div>`;
+            setTimeout(() => tempDiv.remove(), 3000);
         }
     }
 
-    // Add message to chat
+    // Add message
     function addMessage(msg, isOwn) {
+        if (messageCache.has(msg.id)) return;
+        messageCache.set(msg.id, true);
+        
         const div = document.createElement('div');
         div.className = `msg ${isOwn ? 'own' : ''}`;
         div.dataset.id = msg.id;
@@ -495,17 +526,24 @@ document.addEventListener('DOMContentLoaded', function() {
         async function editMessage(message) {
             const newText = prompt('Edit message:', message.text);
             if (newText && newText !== message.text) {
-                await supabase.from('messages').update({
+                const { error } = await supabase.from('messages').update({
                     text: newText,
                     edited: true,
                     edited_at: new Date().toISOString()
                 }).eq('id', message.id);
+                
+                if (error) {
+                    alert('Failed to edit message: ' + error.message);
+                }
             }
         }
         
         async function deleteMessage(messageId) {
             if (confirm('Delete message?')) {
-                await supabase.from('messages').delete().eq('id', messageId);
+                const { error } = await supabase.from('messages').delete().eq('id', messageId);
+                if (error) {
+                    alert('Failed to delete message: ' + error.message);
+                }
             }
         }
         
@@ -513,9 +551,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (msg.image_url) {
             content += `<div><img src="${msg.image_url}" style="width:100%; max-width:320px; border-radius:15px; cursor:pointer;" onclick="window.open(this.src)"></div>`;
-            if (msg.text) content += `<div style="margin-top:5px;">${msg.text.replace(/\n/g, '<br>')}</div>`;
+            if (msg.text) content += `<div style="margin-top:5px;">${formatMessageText(msg.text)}</div>`;
         } else {
-            content += msg.text.replace(/\n/g, '<br>');
+            content += formatMessageText(msg.text);
         }
         
         if (msg.edited) content += ` <span class="edited-tag">(edited)</span>`;
@@ -528,22 +566,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load messages
     async function loadMessages() {
-        if (!currentUser) return;
+        if (!currentUser || isLoading) return;
         
-        const { data } = await supabase
-            .from('messages')
-            .select('*')
-            .order('time', { ascending: true });
+        isLoading = true;
+        
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-indicator';
+        loadingDiv.innerText = 'Loading messages...';
+        chatContainer.appendChild(loadingDiv);
+        
+        try {
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .order('time', { ascending: true });
+                
+            if (error) throw error;
             
-        chatContainer.innerHTML = '';
-        lastMessageDate = null;
-        
-        if (data) {
-            data.forEach(msg => {
-                addDateSeparatorIfNeeded(msg.time);
-                addMessage(msg, msg.username === currentUser);
-            });
+            chatContainer.innerHTML = '';
+            lastMessageDate = null;
+            messageCache.clear();
+            
+            if (data && data.length > 0) {
+                data.forEach(msg => {
+                    addDateSeparatorIfNeeded(msg.time);
+                    addMessage(msg, msg.username === currentUser);
+                });
+            } else {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'loading-indicator';
+                emptyDiv.innerText = 'No messages yet. Send a message!';
+                chatContainer.appendChild(emptyDiv);
+            }
+        } catch (error) {
+            console.error('Error loading messages:', error);
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'loading-indicator';
+            errorDiv.innerText = 'Failed to load messages. Click RF to refresh.';
+            chatContainer.appendChild(errorDiv);
+        } finally {
+            isLoading = false;
+            loadingDiv.remove();
         }
+    }
+
+    // Refresh messages
+    async function refreshMessages() {
+        if (!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
+        
+        refreshTopBtn.style.transform = 'rotate(360deg)';
+        refreshTopBtn.style.transition = 'transform 0.5s';
+        
+        await loadMessages();
+        
+        setTimeout(() => {
+            refreshTopBtn.style.transform = 'rotate(0deg)';
+        }, 500);
     }
 
     // Handle image upload
@@ -602,13 +683,18 @@ document.addEventListener('DOMContentLoaded', function() {
             time: new Date().toISOString()
         };
         
-        await supabase.from('statuses').insert([status]);
-        msgInput.value = '';
-        msgInput.style.height = 'auto';
-        statusInput.value = '';
-        alert('Status uploaded!');
-        await updateMyOnlineStatus();
-        setTimeout(checkAnyStatus, 1000);
+        const { error } = await supabase.from('statuses').insert([status]);
+        
+        if (!error) {
+            msgInput.value = '';
+            msgInput.style.height = 'auto';
+            statusInput.value = '';
+            alert('Status uploaded!');
+            await updateMyOnlineStatus();
+            setTimeout(checkAnyStatus, 1000);
+        } else {
+            alert('Failed to upload status: ' + error.message);
+        }
     }
 
     // Add status
@@ -639,14 +725,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!currentUser) return;
         
         const oneDayAgo = new Date(Date.now() - 24*60*60*1000).toISOString();
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('statuses')
             .select('*')
             .gt('time', oneDayAgo)
             .order('time', { ascending: false });
             
+        if (error) {
+            console.error('Error loading statuses:', error);
+            return;
+        }
+        
         statusContainer.innerHTML = '';
-        if (data) data.forEach(addStatus);
+        if (data && data.length > 0) {
+            data.forEach(addStatus);
+        } else {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'loading-indicator';
+            emptyDiv.innerText = 'No status updates';
+            statusContainer.appendChild(emptyDiv);
+        }
         
         lastSeenStatusTime = new Date().toISOString();
         statusDot.style.display = 'none';
@@ -683,32 +781,55 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        if (confirm('Delete ALL data?')) {
-            await supabase.from('messages').delete().neq('id', 0);
-            await supabase.from('statuses').delete().neq('id', 0);
-            chatContainer.innerHTML = '';
-            statusContainer.innerHTML = '';
-            lastMessageDate = null;
-            checkAnyStatus();
+        if (confirm('⚠️ WARNING: This will delete ALL messages and statuses for EVERYONE! Are you sure?')) {
+            const { error: messagesError } = await supabase.from('messages').delete().neq('id', 0);
+            const { error: statusesError } = await supabase.from('statuses').delete().neq('id', 0);
+            
+            if (!messagesError && !statusesError) {
+                chatContainer.innerHTML = '';
+                statusContainer.innerHTML = '';
+                lastMessageDate = null;
+                messageCache.clear();
+                checkAnyStatus();
+                alert('All data cleared!');
+            } else {
+                alert('Error clearing data');
+            }
         }
     }
 
     // Listen to realtime updates
     function listenToMessages() {
-        supabase
+        if (currentChannel) {
+            supabase.removeChannel(currentChannel);
+        }
+        
+        currentChannel = supabase
             .channel('messages-channel')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
                 payload => {
-                    if (currentUser) {
+                    if (currentUser && !showingStatus) {
                         addDateSeparatorIfNeeded(payload.new.time);
                         addMessage(payload.new, payload.new.username === currentUser);
                     }
                 })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' },
-                () => { if (currentUser) loadMessages(); })
+                () => { 
+                    if (currentUser && !showingStatus) {
+                        loadMessages(); 
+                    }
+                })
             .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' },
-                () => { if (currentUser) loadMessages(); })
-            .subscribe();
+                () => { 
+                    if (currentUser && !showingStatus) {
+                        loadMessages(); 
+                    }
+                })
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('Subscribed to messages channel');
+                }
+            });
     }
 
     function listenToStatuses() {
@@ -752,6 +873,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         imageInput.addEventListener("change", handleImageUpload);
         statusInput.addEventListener("change", handleStatusUpload);
+        refreshTopBtn.addEventListener("click", refreshMessages);
         
         setInterval(async () => {
             if (currentUser) {
@@ -769,6 +891,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 supabase.from('online_users').delete().eq('username', currentUser);
             }
         });
+        
+        loadUserSelection();
     }
 
     // Event listeners
