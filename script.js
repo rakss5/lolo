@@ -805,27 +805,72 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function fullClear() {
-        if (!currentUser) {
-            alert('Please select a user first');
-            return;
+    if (!currentUser) {
+        alert('Please select a user first');
+        return;
+    }
+    
+    if (confirm('⚠️ WARNING: This will delete ALL messages, statuses AND all media files from Storage! Are you sure?')) {
+        
+        // 1. Database থেকে messages ও statuses মুছে ফেলা
+        const { error: messagesError } = await supabase.from('messages').delete().neq('id', 0);
+        const { error: statusesError } = await supabase.from('statuses').delete().neq('id', 0);
+        
+        // 2. Storage থেকে সব ফাইল মুছে ফেলা
+        try {
+            // প্রথমে root-এর ফোল্ডারগুলো list করি (sam, kimi ইত্যাদি)
+            const { data: folders, error: listError } = await supabase.storage
+                .from('media')
+                .list('', { limit: 100 });
+            
+            if (listError) {
+                console.error('Error listing folders:', listError);
+            } else if (folders && folders.length > 0) {
+                for (const folder of folders) {
+                    // প্রতিটা ফোল্ডারের ভিতরের ফাইলগুলো list করি
+                    const { data: files } = await supabase.storage
+                        .from('media')
+                        .list(folder.name, { limit: 1000 });
+                    
+                    if (files && files.length > 0) {
+                        const filePaths = files.map(file => `${folder.name}/${file.name}`);
+                        await supabase.storage.from('media').remove(filePaths);
+                    }
+                }
+            }
+            
+            // যদি root-এ সরাসরি কোনো ফাইল থাকে
+            const { data: rootFiles } = await supabase.storage
+                .from('media')
+                .list('', { limit: 1000 });
+                
+            if (rootFiles && rootFiles.length > 0) {
+                const rootFilePaths = rootFiles
+                    .filter(f => f.id) // শুধু ফাইল (ফোল্ডার নয়)
+                    .map(f => f.name);
+                    
+                if (rootFilePaths.length > 0) {
+                    await supabase.storage.from('media').remove(rootFilePaths);
+                }
+            }
+            
+        } catch (storageError) {
+            console.error('Storage clear error:', storageError);
         }
         
-        if (confirm('⚠️ WARNING: This will delete ALL messages and statuses for EVERYONE! Are you sure?')) {
-            const { error: messagesError } = await supabase.from('messages').delete().neq('id', 0);
-            const { error: statusesError } = await supabase.from('statuses').delete().neq('id', 0);
-            
-            if (!messagesError && !statusesError) {
-                chatContainer.innerHTML = '';
-                statusContainer.innerHTML = '';
-                lastMessageDate = null;
-                messageCache.clear();
-                checkAnyStatus();
-                alert('All data cleared!');
-            } else {
-                alert('Error clearing data');
-            }
+        // 3. UI আপডেট
+        if (!messagesError && !statusesError) {
+            chatContainer.innerHTML = '';
+            statusContainer.innerHTML = '';
+            lastMessageDate = null;
+            messageCache.clear();
+            checkAnyStatus();
+            alert('All messages, statuses and media files cleared!');
+        } else {
+            alert('Error clearing data');
         }
     }
+}
 
     function listenToMessages() {
         if (currentChannel) {
