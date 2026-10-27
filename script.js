@@ -970,5 +970,51 @@ document.addEventListener('DOMContentLoaded', function() {
     statusViewBtn.addEventListener("click", toggleStatusView);
     fullClearBtn.addEventListener("click", fullClear);
 
+// ==================== TYPING INDICATOR ====================
+let typingChannel = null;
+let typingTimeout = null;
+
+function setupTyping() {
+    if (typingChannel) {
+        supabase.removeChannel(typingChannel);
+    }
+
+    typingChannel = supabase.channel('typing')
+        .on('broadcast', { event: 'typing' }, ({ payload }) => {
+            if (payload.user === currentUser) return;
+
+            const indicator = document.getElementById('typingIndicator');
+            indicator.innerText = payload.user + ' is typing...';
+            indicator.style.display = 'block';
+
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 2500);
+        })
+        .subscribe();
+}
+
+// টাইপ করলে পাঠাও
+msgInput.addEventListener('input', () => {
+    if (!currentUser) return;
+
+    if (typingChannel) {
+        typingChannel.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: { user: currentUser }
+        });
+    }
+});
+
+// User চেঞ্জ হলে typing channel চালু করো
+userDropdown.addEventListener('change', () => {
+    if (userDropdown.value) {
+        setupTyping();
+    }
+});
+    
+    
     init();
 });
