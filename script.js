@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const SUPABASE_URL = 'https://hhbbwkeazqnyhdcfyqfg.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_7kplsmCA9Bnjo8gQ68Ki0Q_uTZ1bp6D';
+    const SUPABASE_URL = 'https://zphufvybtpkwcjioyycw.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_IHRCG6lycDBGowoDwRfXaQ_HSJvwVST';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     const colors = {
