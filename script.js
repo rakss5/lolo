@@ -984,7 +984,6 @@ function setupTyping() {
             if (payload.user === currentUser) return;
 
             const indicator = document.getElementById('typingIndicator');
-            indicator.innerText = payload.user + ' is typing...';
             indicator.style.display = 'block';
 
             clearTimeout(typingTimeout);
