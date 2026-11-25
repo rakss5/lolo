@@ -42,8 +42,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inputs
     const imageInput = document.getElementById("imageInput");
     const statusInput = document.getElementById("statusInput");
-    const cameraInput = document.getElementById("cameraInput"); // NEW
-    const statusCameraInput = document.getElementById("statusCameraInput"); // NEW
+    const cameraInput = document.getElementById("cameraInput"); 
+    const statusCameraInput = document.getElementById("statusCameraInput"); 
     
     const sendBtn = document.getElementById("sendBtn");
     const imageBtn = document.getElementById("imageBtn");
@@ -678,8 +678,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isMobile) {
             const choice = confirm("📸 Camera তে যেতে OK চাপুন।\n🖼️ Gallery থেকে নিতে Cancel চাপুন।");
             if (choice) {
+                // ক্যামেরা ওপেন করার আগে capture অ্যাট্রিবিউট সেট করি
+                cameraInput.setAttribute('capture', 'environment');
                 cameraInput.click();
             } else {
+                // গ্যালারি ওপেন করার আগে capture অ্যাট্রিবিউট রিমুভ করি
+                cameraInput.removeAttribute('capture');
                 imageInput.click();
             }
         } else {
@@ -696,8 +700,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isMobile) {
             const choice = confirm("📸 Camera তে যেতে OK চাপুন।\n🖼️ Gallery থেকে নিতে Cancel চাপুন।");
             if (choice) {
+                // ক্যামেরা ওপেন করার আগে capture অ্যাট্রিবিউট সেট করি
+                statusCameraInput.setAttribute('capture', 'environment');
                 statusCameraInput.click();
             } else {
+                // গ্যালারি ওপেন করার আগে capture অ্যাট্রিবিউট রিমুভ করি
+                statusCameraInput.removeAttribute('capture');
                 statusInput.click();
             }
         } else {
