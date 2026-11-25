@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
+    
     const userDropdown = document.getElementById("userDropdown");
     const msgInput = document.getElementById("msg");
     const chatContainer = document.getElementById("chatContainer");
@@ -39,9 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const onlineList = document.getElementById("onlineList");
     const lastSeenContainer = document.getElementById("lastSeenContainer");
     const imageInput = document.getElementById("imageInput");
-    const cameraInput = document.getElementById("cameraInput");
     const statusInput = document.getElementById("statusInput");
-    const statusCameraInput = document.getElementById("statusCameraInput");
     const sendBtn = document.getElementById("sendBtn");
     const imageBtn = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
@@ -64,20 +62,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (savedUser && (savedUser === 'sam' || savedUser === 'kimi')) {
             userDropdown.value = savedUser;
             userDropdown.dispatchEvent(new Event('change'));
-        }
-    }
-
-    // On mobile: ask Camera or Gallery. On desktop: open the normal file picker.
-    function chooseCameraOrGallery(cameraEl, galleryEl) {
-        if (!isMobile) {
-            galleryEl.click();
-            return;
-        }
-        const useCamera = confirm("Do you want to open the Camera or select from Gallery?\n\nOK = Camera\nCancel = Gallery");
-        if (useCamera) {
-            cameraEl.click();
-        } else {
-            galleryEl.click();
         }
     }
 
@@ -862,7 +846,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             if (rootFiles && rootFiles.length > 0) {
                 const rootFilePaths = rootFiles
-                    .filter(f => f.id) // শুধু ফাইল (ফোল্ডার নয়)
+                    .filter(f => f.id) // শুধু ফাইল (ফোল্ডার নয়)
                     .map(f => f.name);
                     
                 if (rootFilePaths.length > 0) {
@@ -956,9 +940,7 @@ document.addEventListener('DOMContentLoaded', function() {
         listenToOnlineUsers();
         
         imageInput.addEventListener("change", handleImageUpload);
-        cameraInput.addEventListener("change", handleImageUpload);
         statusInput.addEventListener("change", handleStatusUpload);
-        statusCameraInput.addEventListener("change", handleStatusUpload);
         refreshTopBtn.addEventListener("click", refreshMessages);
         
         // Update online status every 15 seconds (less frequent to reduce flickering)
@@ -983,8 +965,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     sendBtn.addEventListener("click", send);
-    imageBtn.addEventListener("click", () => chooseCameraOrGallery(cameraInput, imageInput));
-    statusUploadBtn.addEventListener("click", () => chooseCameraOrGallery(statusCameraInput, statusInput));
+    imageBtn.addEventListener("click", () => imageInput.click());
+    statusUploadBtn.addEventListener("click", () => statusInput.click());
     statusViewBtn.addEventListener("click", toggleStatusView);
     fullClearBtn.addEventListener("click", fullClear);
 
