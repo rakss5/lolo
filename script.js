@@ -61,6 +61,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let recordedChunks = [];
     let stream = null;
     let currentFacingMode = 'environment'; // 'environment' = Rear, 'user' = Front
+    let timerInterval = null;
+    let secondsElapsed = 0;
 
     // Save user selection
     function saveUserSelection(user) {
@@ -704,14 +706,17 @@ document.addEventListener('DOMContentLoaded', function() {
         closeCameraBtn.style.display = 'block';
         recordedChunks = [];
         currentFacingMode = 'environment'; // ডিফল্ট পেছনের ক্যামেরা
+        secondsElapsed = 0;
         
-        // Add Flip Button dynamically if not exists
+        // Add Timer and Flip Button dynamically if not exists
         let flipBtn = document.getElementById('flipCameraBtn');
+        let timerDisplay = document.getElementById('cameraTimer');
+        
         if (!flipBtn) {
             flipBtn = document.createElement('button');
             flipBtn.id = 'flipCameraBtn';
             flipBtn.innerText = '🔄';
-            flipBtn.style.cssText = 'position:absolute; top:20px; right:20px; z-index:10000; background:rgba(0,0,0,0.5); border-radius:50%; width:50px; height:50px; font-size:24px; padding:0; display:flex; align-items:center; justify-content:center;';
+            flipBtn.style.cssText = 'position:absolute; top:20px; right:20px; z-index:10000; background:rgba(0,0,0,0.5); border-radius:50%; width:50px; height:50px; font-size:24px; padding:0; display:flex; align-items:center; justify-content:center; border: none; color: white;';
             cameraModal.appendChild(flipBtn);
             
             flipBtn.addEventListener('click', async () => {
@@ -720,6 +725,16 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         flipBtn.style.display = 'flex';
+        
+        if (!timerDisplay) {
+            timerDisplay = document.createElement('div');
+            timerDisplay.id = 'cameraTimer';
+            timerDisplay.innerText = '00:00';
+            timerDisplay.style.cssText = 'position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:10000; background:rgba(0,0,0,0.6); color:#ef4444; padding:5px 15px; border-radius:20px; font-size:18px; font-weight:bold; font-family:monospace; display:none;';
+            cameraModal.appendChild(timerDisplay);
+        }
+        timerDisplay.style.display = 'none';
+        timerDisplay.innerText = '00:00';
 
         await startCameraStream();
     }
@@ -747,6 +762,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function startTimer() {
+        secondsElapsed = 0;
+        const timerDisplay = document.getElementById('cameraTimer');
+        timerDisplay.style.display = 'block';
+        timerDisplay.innerText = '00:00';
+        
+        timerInterval = setInterval(() => {
+            secondsElapsed++;
+            const mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+            const secs = (secondsElapsed % 60).toString().padStart(2, '0');
+            timerDisplay.innerText = `${mins}:${secs}`;
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        const timerDisplay = document.getElementById('cameraTimer');
+        if (timerDisplay) {
+            timerDisplay.style.display = 'none';
+            timerDisplay.innerText = '00:00';
+        }
+    }
+
     function closeCameraModal() {
         cameraModal.style.display = 'none';
         const flipBtn = document.getElementById('flipCameraBtn');
@@ -760,8 +801,8 @@ document.addEventListener('DOMContentLoaded', function() {
             mediaRecorder.stop();
         }
         cameraPreview.srcObject = null;
-        // রিসেট ট্রান্সফর্ম
         cameraPreview.style.transform = 'scaleX(1)';
+        stopTimer();
     }
 
     startRecordBtn.addEventListener('click', () => {
@@ -804,12 +845,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // রেকর্ডিং চলাকালীন ফ্লিপ বাটন হাইড করা
         const flipBtn = document.getElementById('flipCameraBtn');
         if (flipBtn) flipBtn.style.display = 'none';
+        
+        // টাইমার শুরু
+        startTimer();
     });
 
     stopRecordBtn.addEventListener('click', () => {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
             stopRecordBtn.style.display = 'none';
+            stopTimer();
         }
     });
 
