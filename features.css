@@ -1,0 +1,259 @@
+/* features.css: additive styles for the top bar, dashboard and camera overlays.
+ * Does NOT change any existing style rule in index.html. */
+
+/* Respect [hidden] even when a class sets display */
+[hidden] { display: none !important; }
+
+/* Make room for the fixed top bar (the existing #app keeps its own layout) */
+#app { padding-top: 44px; }
+
+/* ---------- Fixed top bar ---------- */
+#featTopBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  max-width: 420px;
+  height: 44px;
+  margin: 0 auto;
+  background: #020617;
+  border-bottom: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  z-index: 3000;
+}
+.feat-btn {
+  min-width: 56px;
+  height: 32px;
+  margin: 0;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  background: #334155;
+}
+#featDaBtn { background: #8b5cf6; }
+#featCaBtn { background: #10b981; }
+.feat-btn.active { box-shadow: inset 0 0 0 2px #fff; }
+
+/* ---------- Overlay panels ---------- */
+.feat-panel {
+  position: fixed;
+  top: 44px;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 420px;
+  background: #020617;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-sizing: border-box;
+  z-index: 2500;
+}
+.feat-panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: #020617;
+  border-bottom: 1px solid #334155;
+  font-weight: bold;
+  font-size: 15px;
+}
+.feat-close {
+  margin: 0;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 8px;
+  background: #dc2626;
+  color: #fff;
+  cursor: pointer;
+}
+.feat-sub { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+.feat-error {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 13px;
+}
+
+/* ---------- Dashboard ---------- */
+.feat-dash-body { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.feat-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 12px;
+}
+.feat-card.wide { grid-column: 1 / -1; }
+.feat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+.feat-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: bold;
+  word-break: break-all;
+}
+.feat-value.big { font-size: 28px; }
+.feat-value.mono { font-family: monospace; font-size: 15px; }
+.feat-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #64748b;
+}
+.feat-dot.on { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+.feat-section { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 12px; }
+.feat-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.feat-list li {
+  padding: 8px 10px;
+  border-bottom: 1px solid #334155;
+  font-size: 14px;
+}
+.feat-foot { font-size: 11px; color: #94a3b8; text-align: center; }
+
+/* ---------- Camera ---------- */
+.feat-cam-stage {
+  position: relative;
+  margin: 10px;
+  height: 52vh;
+  max-height: 480px;
+  background: #000;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#featVideo { width: 100%; height: 100%; object-fit: cover; }
+.feat-cam-stage .feat-error {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+}
+.feat-rec {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #f87171;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: bold;
+}
+.feat-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.feat-flash.go { opacity: 0.85; transition: none; }
+.feat-cam-controls { display: flex; gap: 10px; padding: 0 10px 8px; }
+.feat-action {
+  flex: 1;
+  height: 44px;
+  margin: 0;
+  border: none;
+  border-radius: 12px;
+  background: #10b981;
+  color: #fff;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.feat-action.rec { background: #dc2626; }
+.feat-action.rec.recording { background: #7f1d1d; }
+.feat-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.feat-cam-status { margin: 0 10px 8px; font-size: 13px; color: #94a3b8; min-height: 18px; }
+.feat-thread-title {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-top: 1px solid #334155;
+}
+.feat-thread {
+  flex: 1;
+  min-height: 160px;
+  background: #1e293b;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.feat-bubble {
+  max-width: 85%;
+  padding: 8px;
+  background: #334155;
+  border-radius: 14px;
+  align-self: flex-start;
+}
+.feat-bubble.own { align-self: flex-end; background: #000; }
+.feat-bubble.failed .feat-status { color: #f87171; }
+.feat-bubble img,
+.feat-bubble video {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.feat-sender { font-size: 13px; font-weight: bold; margin: 0 4px 6px; }
+.feat-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 4px 0;
+  font-size: 11px;
+  color: #94a3b8;
+}
+.feat-progress {
+  height: 6px;
+  margin: 8px 4px 0;
+  background: #475569;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.feat-progress-bar { height: 100%; width: 0; background: #10b981; transition: width 0.15s; }
+
+/* Desktop: panels stay in the same 420px column as the chat */
+@media (min-width: 481px) {
+  #featTopBar { border-left: 1px solid #334155; border-right: 1px solid #334155; }
+}
