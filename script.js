@@ -38,8 +38,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const onlineUsersEl = document.getElementById("onlineUsers");
     const onlineList = document.getElementById("onlineList");
     const lastSeenContainer = document.getElementById("lastSeenContainer");
+    
+    // Inputs
     const imageInput = document.getElementById("imageInput");
     const statusInput = document.getElementById("statusInput");
+    const cameraInput = document.getElementById("cameraInput"); // NEW
+    const statusCameraInput = document.getElementById("statusCameraInput"); // NEW
+    
     const sendBtn = document.getElementById("sendBtn");
     const imageBtn = document.getElementById("imageBtn");
     const statusUploadBtn = document.getElementById("statusUploadBtn");
@@ -662,10 +667,49 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 500);
     }
 
+    // SMART HANDLERS FOR CAMERA & GALLERY
+    
+    function handleChatImageClick() {
+        if (!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
+        
+        if (isMobile) {
+            const choice = confirm("📸 Camera তে যেতে OK চাপুন।\n🖼️ Gallery থেকে নিতে Cancel চাপুন।");
+            if (choice) {
+                cameraInput.click();
+            } else {
+                imageInput.click();
+            }
+        } else {
+            imageInput.click();
+        }
+    }
+
+    function handleStatusClick() {
+        if (!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
+        
+        if (isMobile) {
+            const choice = confirm("📸 Camera তে যেতে OK চাপুন।\n🖼️ Gallery থেকে নিতে Cancel চাপুন।");
+            if (choice) {
+                statusCameraInput.click();
+            } else {
+                statusInput.click();
+            }
+        } else {
+            statusInput.click();
+        }
+    }
+
     async function handleImageUpload(e) {
         if (!currentUser) {
             alert('Please select a user first');
             imageInput.value = '';
+            cameraInput.value = '';
             return;
         }
         
@@ -673,22 +717,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!file || !file.type.startsWith('image/')) {
             alert('Please select an image file only');
             imageInput.value = '';
+            cameraInput.value = '';
             return;
         }
         
         await uploadImage(file);
         imageInput.value = '';
+        cameraInput.value = '';
     }
 
     async function handleStatusUpload(e) {
         if (!currentUser) {
             alert('Please select a user first');
             statusInput.value = '';
+            statusCameraInput.value = '';
             return;
         }
         
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file) {
+            statusInput.value = '';
+            statusCameraInput.value = '';
+            return;
+        }
         
         const fileExt = file.name.split('.').pop();
         const fileName = `status_${Date.now()}.${fileExt}`;
@@ -701,6 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (uploadError) {
             alert('Upload failed: ' + uploadError.message);
             statusInput.value = '';
+            statusCameraInput.value = '';
             return;
         }
         
@@ -722,6 +774,7 @@ document.addEventListener('DOMContentLoaded', function() {
             msgInput.value = '';
             msgInput.style.height = 'auto';
             statusInput.value = '';
+            statusCameraInput.value = '';
             alert('Status uploaded!');
             await updateMyOnlineStatus();
             setTimeout(checkAnyStatus, 1000);
@@ -805,72 +858,72 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function fullClear() {
-    if (!currentUser) {
-        alert('Please select a user first');
-        return;
-    }
-    
-    if (confirm('⚠️ WARNING: This will delete ALL messages, statuses AND all media files from Storage! Are you sure?')) {
+        if (!currentUser) {
+            alert('Please select a user first');
+            return;
+        }
         
-        // 1. Database থেকে messages ও statuses মুছে ফেলা
-        const { error: messagesError } = await supabase.from('messages').delete().neq('id', 0);
-        const { error: statusesError } = await supabase.from('statuses').delete().neq('id', 0);
-        
-        // 2. Storage থেকে সব ফাইল মুছে ফেলা
-        try {
-            // প্রথমে root-এর ফোল্ডারগুলো list করি (sam, kimi ইত্যাদি)
-            const { data: folders, error: listError } = await supabase.storage
-                .from('media')
-                .list('', { limit: 100 });
+        if (confirm('⚠️ WARNING: This will delete ALL messages, statuses AND all media files from Storage! Are you sure?')) {
             
-            if (listError) {
-                console.error('Error listing folders:', listError);
-            } else if (folders && folders.length > 0) {
-                for (const folder of folders) {
-                    // প্রতিটা ফোল্ডারের ভিতরের ফাইলগুলো list করি
-                    const { data: files } = await supabase.storage
-                        .from('media')
-                        .list(folder.name, { limit: 1000 });
-                    
-                    if (files && files.length > 0) {
-                        const filePaths = files.map(file => `${folder.name}/${file.name}`);
-                        await supabase.storage.from('media').remove(filePaths);
+            // 1. Database থেকে messages ও statuses মুছে ফেলা
+            const { error: messagesError } = await supabase.from('messages').delete().neq('id', 0);
+            const { error: statusesError } = await supabase.from('statuses').delete().neq('id', 0);
+            
+            // 2. Storage থেকে সব ফাইল মুছে ফেলা
+            try {
+                // প্রথমে root-এর ফোল্ডারগুলো list করি (sam, kimi ইত্যাদি)
+                const { data: folders, error: listError } = await supabase.storage
+                    .from('media')
+                    .list('', { limit: 100 });
+                
+                if (listError) {
+                    console.error('Error listing folders:', listError);
+                } else if (folders && folders.length > 0) {
+                    for (const folder of folders) {
+                        // প্রতিটা ফোল্ডারের ভিতরের ফাইলগুলো list করি
+                        const { data: files } = await supabase.storage
+                            .from('media')
+                            .list(folder.name, { limit: 1000 });
+                        
+                        if (files && files.length > 0) {
+                            const filePaths = files.map(file => `${folder.name}/${file.name}`);
+                            await supabase.storage.from('media').remove(filePaths);
+                        }
                     }
                 }
-            }
-            
-            // যদি root-এ সরাসরি কোনো ফাইল থাকে
-            const { data: rootFiles } = await supabase.storage
-                .from('media')
-                .list('', { limit: 1000 });
                 
-            if (rootFiles && rootFiles.length > 0) {
-                const rootFilePaths = rootFiles
-                    .filter(f => f.id) // শুধু ফাইল (ফোল্ডার নয়)
-                    .map(f => f.name);
+                // যদি root-এ সরাসরি কোনো ফাইল থাকে
+                const { data: rootFiles } = await supabase.storage
+                    .from('media')
+                    .list('', { limit: 1000 });
                     
-                if (rootFilePaths.length > 0) {
-                    await supabase.storage.from('media').remove(rootFilePaths);
+                if (rootFiles && rootFiles.length > 0) {
+                    const rootFilePaths = rootFiles
+                        .filter(f => f.id) // শুধু ফাইল (ফোল্ডার নয়)
+                        .map(f => f.name);
+                        
+                    if (rootFilePaths.length > 0) {
+                        await supabase.storage.from('media').remove(rootFilePaths);
+                    }
                 }
+                
+            } catch (storageError) {
+                console.error('Storage clear error:', storageError);
             }
             
-        } catch (storageError) {
-            console.error('Storage clear error:', storageError);
-        }
-        
-        // 3. UI আপডেট
-        if (!messagesError && !statusesError) {
-            chatContainer.innerHTML = '';
-            statusContainer.innerHTML = '';
-            lastMessageDate = null;
-            messageCache.clear();
-            checkAnyStatus();
-            alert('All messages, statuses and media files cleared!');
-        } else {
-            alert('Error clearing data');
+            // 3. UI আপডেট
+            if (!messagesError && !statusesError) {
+                chatContainer.innerHTML = '';
+                statusContainer.innerHTML = '';
+                lastMessageDate = null;
+                messageCache.clear();
+                checkAnyStatus();
+                alert('All messages, statuses and media files cleared!');
+            } else {
+                alert('Error clearing data');
+            }
         }
     }
-}
 
     function listenToMessages() {
         if (currentChannel) {
@@ -939,17 +992,21 @@ document.addEventListener('DOMContentLoaded', function() {
         listenToStatuses();
         listenToOnlineUsers();
         
+        // Updated Event Listeners
         imageInput.addEventListener("change", handleImageUpload);
+        cameraInput.addEventListener("change", handleImageUpload); // NEW
         statusInput.addEventListener("change", handleStatusUpload);
+        statusCameraInput.addEventListener("change", handleStatusUpload); // NEW
+        
         refreshTopBtn.addEventListener("click", refreshMessages);
         
-        // Update online status every 15 seconds (less frequent to reduce flickering)
+        // Update online status every 15 seconds
         setInterval(async () => {
             if (currentUser) {
                 await updateMyOnlineStatus();
                 await displayOnlineUsers();
             }
-        }, 15000); // 15 seconds
+        }, 15000);
         
         setInterval(() => {
             if (currentUser) checkAnyStatus();
@@ -965,8 +1022,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     sendBtn.addEventListener("click", send);
-    imageBtn.addEventListener("click", () => imageInput.click());
-    statusUploadBtn.addEventListener("click", () => statusInput.click());
+    // Updated Button Listeners to use our smart functions
+    imageBtn.addEventListener("click", handleChatImageClick); 
+    statusUploadBtn.addEventListener("click", handleStatusClick);
     statusViewBtn.addEventListener("click", toggleStatusView);
     fullClearBtn.addEventListener("click", fullClear);
 
