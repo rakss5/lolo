@@ -371,7 +371,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const timeDiff = now - new Date(lastSeen);
-            const isActuallyOnline = timeDiff <= ONLINE_THRESHOLD;
+            let isActuallyOnline = timeDiff <= ONLINE_THRESHOLD;
             
             // Update cache with debounce - prevents flickering
             if (onlineStatusCache[user].isOnline !== isActuallyOnline) {
@@ -667,7 +667,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 500);
     }
 
-    // SMART HANDLERS FOR CAMERA & GALLERY
+    // ========== SMART CAMERA & GALLERY HANDLERS ==========
     
     function handleChatImageClick() {
         if (!currentUser) {
@@ -678,12 +678,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isMobile) {
             const choice = confirm("📸 Camera তে যেতে OK চাপুন।\n🖼️ Gallery থেকে নিতে Cancel চাপুন।");
             if (choice) {
-                // ক্যামেরা ওপেন করার আগে capture অ্যাট্রিবিউট সেট করি
-                cameraInput.setAttribute('capture', 'environment');
-                cameraInput.click();
+                // Force camera open by creating a new input element
+                const tempCamera = document.createElement('input');
+                tempCamera.type = 'file';
+                tempCamera.accept = 'image/*';
+                tempCamera.capture = 'environment';
+                tempCamera.style.display = 'none';
+                document.body.appendChild(tempCamera);
+                tempCamera.addEventListener('change', function(e) {
+                    handleImageUpload(e);
+                    document.body.removeChild(tempCamera);
+                });
+                tempCamera.click();
             } else {
-                // গ্যালারি ওপেন করার আগে capture অ্যাট্রিবিউট রিমুভ করি
-                cameraInput.removeAttribute('capture');
                 imageInput.click();
             }
         } else {
@@ -698,14 +705,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (isMobile) {
-            const choice = confirm("📸 Camera তে যেতে OK চাপুন।\n🖼️ Gallery থেকে নিতে Cancel চাপুন।");
+            const choice = confirm("📸 Camera তে ভিডিও/ছবি রেকর্ড করতে OK চাপুন।\n📁 Gallery থেকে নিতে Cancel চাপুন।");
             if (choice) {
-                // ক্যামেরা ওপেন করার আগে capture অ্যাট্রিবিউট সেট করি
-                statusCameraInput.setAttribute('capture', 'environment');
-                statusCameraInput.click();
+                // Force camera open for video/photo
+                const tempCamera = document.createElement('input');
+                tempCamera.type = 'file';
+                tempCamera.accept = 'image/*,video/*';
+                tempCamera.capture = 'environment';
+                tempCamera.style.display = 'none';
+                document.body.appendChild(tempCamera);
+                tempCamera.addEventListener('change', function(e) {
+                    handleStatusUpload(e);
+                    document.body.removeChild(tempCamera);
+                });
+                tempCamera.click();
             } else {
-                // গ্যালারি ওপেন করার আগে capture অ্যাট্রিবিউট রিমুভ করি
-                statusCameraInput.removeAttribute('capture');
                 statusInput.click();
             }
         } else {
@@ -1002,9 +1016,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Updated Event Listeners
         imageInput.addEventListener("change", handleImageUpload);
-        cameraInput.addEventListener("change", handleImageUpload); // NEW
+        cameraInput.addEventListener("change", handleImageUpload);
         statusInput.addEventListener("change", handleStatusUpload);
-        statusCameraInput.addEventListener("change", handleStatusUpload); // NEW
+        statusCameraInput.addEventListener("change", handleStatusUpload);
         
         refreshTopBtn.addEventListener("click", refreshMessages);
         
@@ -1030,7 +1044,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     sendBtn.addEventListener("click", send);
-    // Updated Button Listeners to use our smart functions
     imageBtn.addEventListener("click", handleChatImageClick); 
     statusUploadBtn.addEventListener("click", handleStatusClick);
     statusViewBtn.addEventListener("click", toggleStatusView);
