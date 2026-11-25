@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let mediaRecorder = null;
     let recordedChunks = [];
     let stream = null;
+    let currentFacingMode = 'environment'; // 'environment' = Rear, 'user' = Front
 
     // Save user selection
     function saveUserSelection(user) {
@@ -700,14 +701,46 @@ document.addEventListener('DOMContentLoaded', function() {
         cameraModal.style.display = 'flex';
         startRecordBtn.style.display = 'block';
         stopRecordBtn.style.display = 'none';
+        closeCameraBtn.style.display = 'block';
         recordedChunks = [];
+        currentFacingMode = 'environment'; // ডিফল্ট পেছনের ক্যামেরা
+        
+        // Add Flip Button dynamically if not exists
+        let flipBtn = document.getElementById('flipCameraBtn');
+        if (!flipBtn) {
+            flipBtn = document.createElement('button');
+            flipBtn.id = 'flipCameraBtn';
+            flipBtn.innerText = '🔄';
+            flipBtn.style.cssText = 'position:absolute; top:20px; right:20px; z-index:10000; background:rgba(0,0,0,0.5); border-radius:50%; width:50px; height:50px; font-size:24px; padding:0; display:flex; align-items:center; justify-content:center;';
+            cameraModal.appendChild(flipBtn);
+            
+            flipBtn.addEventListener('click', async () => {
+                currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+                await startCameraStream();
+            });
+        }
+        flipBtn.style.display = 'flex';
+
+        await startCameraStream();
+    }
+
+    async function startCameraStream() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
         
         try {
             stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment' }, 
+                video: { facingMode: currentFacingMode }, 
                 audio: true 
             });
             cameraPreview.srcObject = stream;
+            // Selfie ক্যামেরা হলে ভিডিওটি মিরর করে দেখাবে
+            if (currentFacingMode === 'user') {
+                cameraPreview.style.transform = 'scaleX(-1)';
+            } else {
+                cameraPreview.style.transform = 'scaleX(1)';
+            }
         } catch (err) {
             alert('Camera access denied or not available: ' + err.message);
             closeCameraModal();
@@ -716,6 +749,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function closeCameraModal() {
         cameraModal.style.display = 'none';
+        const flipBtn = document.getElementById('flipCameraBtn');
+        if (flipBtn) flipBtn.style.display = 'none';
+        
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
             stream = null;
@@ -724,6 +760,8 @@ document.addEventListener('DOMContentLoaded', function() {
             mediaRecorder.stop();
         }
         cameraPreview.srcObject = null;
+        // রিসেট ট্রান্সফর্ম
+        cameraPreview.style.transform = 'scaleX(1)';
     }
 
     startRecordBtn.addEventListener('click', () => {
@@ -762,6 +800,10 @@ document.addEventListener('DOMContentLoaded', function() {
         startRecordBtn.style.display = 'none';
         stopRecordBtn.style.display = 'block';
         closeCameraBtn.style.display = 'none';
+        
+        // রেকর্ডিং চলাকালীন ফ্লিপ বাটন হাইড করা
+        const flipBtn = document.getElementById('flipCameraBtn');
+        if (flipBtn) flipBtn.style.display = 'none';
     });
 
     stopRecordBtn.addEventListener('click', () => {
@@ -780,7 +822,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const fileName = `status_${Date.now()}.${fileExt}`;
         const filePath = `${currentUser}/${fileName}`;
         
-        // Show loading
         const loadingDiv = document.createElement('div');
         loadingDiv.className = 'loading-indicator';
         loadingDiv.innerText = 'Uploading Story...';
