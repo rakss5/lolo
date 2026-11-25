@@ -505,10 +505,12 @@
             <button class="imageBtn" id="imageBtn">🖼️</button>
         </label>
         <input type="file" id="imageInput" accept="image/*" style="display:none;">
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
         <label for="statusInput">
             <button class="statusUploadBtn" id="statusUploadBtn">📋</button>
         </label>
         <input type="file" id="statusInput" accept="image/*,video/*" style="display:none;">
+        <input type="file" id="statusCameraInput" accept="image/*,video/*" capture="environment" style="display:none;">
         
         <textarea id="msg" placeholder="Type a message" rows="1"></textarea>
         <button class="sendBtn" id="sendBtn">
