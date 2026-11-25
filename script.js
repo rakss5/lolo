@@ -42,8 +42,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inputs
     const imageInput = document.getElementById("imageInput");
     const statusInput = document.getElementById("statusInput");
-    const cameraInput = document.getElementById("cameraInput"); 
-    const statusCameraInput = document.getElementById("statusCameraInput"); 
     
     const sendBtn = document.getElementById("sendBtn");
     const imageBtn = document.getElementById("imageBtn");
@@ -51,6 +49,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const pastePreview = document.getElementById('pastePreview');
     const previewImage = document.getElementById('previewImage');
     const sendPastedBtn = document.getElementById('sendPastedBtn');
+
+    // Camera Modal Elements
+    const cameraModal = document.getElementById('cameraModal');
+    const cameraPreview = document.getElementById('cameraPreview');
+    const closeCameraBtn = document.getElementById('closeCameraBtn');
+    const startRecordBtn = document.getElementById('startRecordBtn');
+    const stopRecordBtn = document.getElementById('stopRecordBtn');
+    
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let stream = null;
 
     // Save user selection
     function saveUserSelection(user) {
@@ -340,8 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // 30 seconds threshold for online/offline
-        const ONLINE_THRESHOLD = 30000; // 30 seconds
+        const ONLINE_THRESHOLD = 30000;
         
         const { data: allUsers } = await supabase
             .from('online_users')
@@ -361,7 +369,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const lastSeen = userData?.last_seen;
             
             if (!lastSeen) {
-                // Never seen before
                 if (onlineStatusCache[user].isOnline !== false) {
                     onlineStatusCache[user].isOnline = false;
                     onlineStatusCache[user].lastChecked = now;
@@ -373,17 +380,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const timeDiff = now - new Date(lastSeen);
             let isActuallyOnline = timeDiff <= ONLINE_THRESHOLD;
             
-            // Update cache with debounce - prevents flickering
             if (onlineStatusCache[user].isOnline !== isActuallyOnline) {
                 const lastChange = onlineStatusCache[user].lastChecked;
                 const timeSinceLastChange = lastChange ? now - lastChange : Infinity;
                 
-                // Only change status if stable for at least 5 seconds
                 if (timeSinceLastChange >= 5000 || !lastChange) {
                     onlineStatusCache[user].isOnline = isActuallyOnline;
                     onlineStatusCache[user].lastChecked = now;
                 } else {
-                    // Use cached value to prevent flickering
                     isActuallyOnline = onlineStatusCache[user].isOnline;
                 }
             }
@@ -395,7 +399,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Update UI
         onlineUsersEl.style.display = "block";
         if (onlineListArray.length > 0) {
             onlineList.innerText = onlineListArray.join(', ');
@@ -657,11 +660,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Add rotation animation
         refreshTopBtn.classList.add('spin-animation');
-        
         await loadMessages();
-        
         setTimeout(() => {
             refreshTopBtn.classList.remove('spin-animation');
         }, 500);
@@ -674,28 +674,7 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Please select a user first');
             return;
         }
-        
-        if (isMobile) {
-            const choice = confirm("📸 Camera তে যেতে OK চাপুন।\n🖼️ Gallery থেকে নিতে Cancel চাপুন।");
-            if (choice) {
-                // Force camera open by creating a new input element
-                const tempCamera = document.createElement('input');
-                tempCamera.type = 'file';
-                tempCamera.accept = 'image/*';
-                tempCamera.capture = 'environment';
-                tempCamera.style.display = 'none';
-                document.body.appendChild(tempCamera);
-                tempCamera.addEventListener('change', function(e) {
-                    handleImageUpload(e);
-                    document.body.removeChild(tempCamera);
-                });
-                tempCamera.click();
-            } else {
-                imageInput.click();
-            }
-        } else {
-            imageInput.click();
-        }
+        imageInput.click();
     }
 
     function handleStatusClick() {
@@ -705,20 +684,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (isMobile) {
-            const choice = confirm("📸 Camera তে ভিডিও/ছবি রেকর্ড করতে OK চাপুন।\n📁 Gallery থেকে নিতে Cancel চাপুন।");
+            const choice = confirm("📸 Camera তে ভিডিও রেকর্ড করতে OK চাপুন।\n📁 Gallery থেকে নিতে Cancel চাপুন।");
             if (choice) {
-                // Force camera open for video/photo
-                const tempCamera = document.createElement('input');
-                tempCamera.type = 'file';
-                tempCamera.accept = 'image/*,video/*';
-                tempCamera.capture = 'environment';
-                tempCamera.style.display = 'none';
-                document.body.appendChild(tempCamera);
-                tempCamera.addEventListener('change', function(e) {
-                    handleStatusUpload(e);
-                    document.body.removeChild(tempCamera);
-                });
-                tempCamera.click();
+                openCameraModal();
             } else {
                 statusInput.click();
             }
@@ -727,11 +695,137 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Custom Camera Modal Logic
+    async function openCameraModal() {
+        cameraModal.style.display = 'flex';
+        startRecordBtn.style.display = 'block';
+        stopRecordBtn.style.display = 'none';
+        recordedChunks = [];
+        
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' }, 
+                audio: true 
+            });
+            cameraPreview.srcObject = stream;
+        } catch (err) {
+            alert('Camera access denied or not available: ' + err.message);
+            closeCameraModal();
+        }
+    }
+
+    function closeCameraModal() {
+        cameraModal.style.display = 'none';
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+        cameraPreview.srcObject = null;
+    }
+
+    startRecordBtn.addEventListener('click', () => {
+        if (!stream) return;
+        
+        let options = { mimeType: 'video/webm;codecs=vp9' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options = { mimeType: 'video/webm' };
+        }
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options = { mimeType: 'video/mp4' };
+        }
+
+        try {
+            mediaRecorder = new MediaRecorder(stream, options);
+        } catch (e) {
+            alert('MediaRecorder not supported on this browser: ' + e.message);
+            return;
+        }
+
+        mediaRecorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+            const file = new File([blob], `story_${Date.now()}.webm`, { type: mediaRecorder.mimeType });
+            
+            closeCameraModal();
+            await uploadStatusVideo(file);
+        };
+
+        mediaRecorder.start();
+        startRecordBtn.style.display = 'none';
+        stopRecordBtn.style.display = 'block';
+        closeCameraBtn.style.display = 'none';
+    });
+
+    stopRecordBtn.addEventListener('click', () => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            stopRecordBtn.style.display = 'none';
+        }
+    });
+
+    closeCameraBtn.addEventListener('click', closeCameraModal);
+
+    async function uploadStatusVideo(file) {
+        if (!currentUser) return;
+        
+        const fileExt = file.name.split('.').pop();
+        const fileName = `status_${Date.now()}.${fileExt}`;
+        const filePath = `${currentUser}/${fileName}`;
+        
+        // Show loading
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-indicator';
+        loadingDiv.innerText = 'Uploading Story...';
+        statusContainer.prepend(loadingDiv);
+
+        const { error: uploadError } = await supabase.storage
+            .from('media')
+            .upload(filePath, file);
+            
+        if (uploadError) {
+            alert('Upload failed: ' + uploadError.message);
+            loadingDiv.remove();
+            return;
+        }
+        
+        const { data: { publicUrl } } = supabase.storage
+            .from('media')
+            .getPublicUrl(filePath);
+            
+        const status = {
+            username: currentUser,
+            media_url: publicUrl,
+            media_type: 'video',
+            caption: msgInput.value.trim() || '',
+            time: new Date().toISOString()
+        };
+        
+        const { error } = await supabase.from('statuses').insert([status]);
+        
+        if (!error) {
+            msgInput.value = '';
+            msgInput.style.height = 'auto';
+            alert('Story uploaded successfully!');
+            await updateMyOnlineStatus();
+            setTimeout(checkAnyStatus, 1000);
+        } else {
+            alert('Failed to upload status: ' + error.message);
+        }
+        loadingDiv.remove();
+    }
+
     async function handleImageUpload(e) {
         if (!currentUser) {
             alert('Please select a user first');
             imageInput.value = '';
-            cameraInput.value = '';
             return;
         }
         
@@ -739,27 +833,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!file || !file.type.startsWith('image/')) {
             alert('Please select an image file only');
             imageInput.value = '';
-            cameraInput.value = '';
             return;
         }
         
         await uploadImage(file);
         imageInput.value = '';
-        cameraInput.value = '';
     }
 
     async function handleStatusUpload(e) {
         if (!currentUser) {
             alert('Please select a user first');
             statusInput.value = '';
-            statusCameraInput.value = '';
             return;
         }
         
         const file = e.target.files[0];
         if (!file) {
             statusInput.value = '';
-            statusCameraInput.value = '';
             return;
         }
         
@@ -774,7 +864,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (uploadError) {
             alert('Upload failed: ' + uploadError.message);
             statusInput.value = '';
-            statusCameraInput.value = '';
             return;
         }
         
@@ -796,7 +885,6 @@ document.addEventListener('DOMContentLoaded', function() {
             msgInput.value = '';
             msgInput.style.height = 'auto';
             statusInput.value = '';
-            statusCameraInput.value = '';
             alert('Status uploaded!');
             await updateMyOnlineStatus();
             setTimeout(checkAnyStatus, 1000);
@@ -887,13 +975,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (confirm('⚠️ WARNING: This will delete ALL messages, statuses AND all media files from Storage! Are you sure?')) {
             
-            // 1. Database থেকে messages ও statuses মুছে ফেলা
             const { error: messagesError } = await supabase.from('messages').delete().neq('id', 0);
             const { error: statusesError } = await supabase.from('statuses').delete().neq('id', 0);
             
-            // 2. Storage থেকে সব ফাইল মুছে ফেলা
             try {
-                // প্রথমে root-এর ফোল্ডারগুলো list করি (sam, kimi ইত্যাদি)
                 const { data: folders, error: listError } = await supabase.storage
                     .from('media')
                     .list('', { limit: 100 });
@@ -902,7 +987,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Error listing folders:', listError);
                 } else if (folders && folders.length > 0) {
                     for (const folder of folders) {
-                        // প্রতিটা ফোল্ডারের ভিতরের ফাইলগুলো list করি
                         const { data: files } = await supabase.storage
                             .from('media')
                             .list(folder.name, { limit: 1000 });
@@ -914,14 +998,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 
-                // যদি root-এ সরাসরি কোনো ফাইল থাকে
                 const { data: rootFiles } = await supabase.storage
                     .from('media')
                     .list('', { limit: 1000 });
                     
                 if (rootFiles && rootFiles.length > 0) {
                     const rootFilePaths = rootFiles
-                        .filter(f => f.id) // শুধু ফাইল (ফোল্ডার নয়)
+                        .filter(f => f.id)
                         .map(f => f.name);
                         
                     if (rootFilePaths.length > 0) {
@@ -933,7 +1016,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Storage clear error:', storageError);
             }
             
-            // 3. UI আপডেট
             if (!messagesError && !statusesError) {
                 chatContainer.innerHTML = '';
                 statusContainer.innerHTML = '';
@@ -1014,15 +1096,11 @@ document.addEventListener('DOMContentLoaded', function() {
         listenToStatuses();
         listenToOnlineUsers();
         
-        // Updated Event Listeners
         imageInput.addEventListener("change", handleImageUpload);
-        cameraInput.addEventListener("change", handleImageUpload);
         statusInput.addEventListener("change", handleStatusUpload);
-        statusCameraInput.addEventListener("change", handleStatusUpload);
         
         refreshTopBtn.addEventListener("click", refreshMessages);
         
-        // Update online status every 15 seconds
         setInterval(async () => {
             if (currentUser) {
                 await updateMyOnlineStatus();
@@ -1049,50 +1127,47 @@ document.addEventListener('DOMContentLoaded', function() {
     statusViewBtn.addEventListener("click", toggleStatusView);
     fullClearBtn.addEventListener("click", fullClear);
 
-// ==================== TYPING INDICATOR ====================
-let typingChannel = null;
-let typingTimeout = null;
+    // ==================== TYPING INDICATOR ====================
+    let typingChannel = null;
+    let typingTimeout = null;
 
-function setupTyping() {
-    if (typingChannel) {
-        supabase.removeChannel(typingChannel);
+    function setupTyping() {
+        if (typingChannel) {
+            supabase.removeChannel(typingChannel);
+        }
+
+        typingChannel = supabase.channel('typing')
+            .on('broadcast', { event: 'typing' }, ({ payload }) => {
+                if (payload.user === currentUser) return;
+
+                const indicator = document.getElementById('typingIndicator');
+                indicator.style.display = 'block';
+
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, 2500);
+            })
+            .subscribe();
     }
 
-    typingChannel = supabase.channel('typing')
-        .on('broadcast', { event: 'typing' }, ({ payload }) => {
-            if (payload.user === currentUser) return;
+    msgInput.addEventListener('input', () => {
+        if (!currentUser) return;
 
-            const indicator = document.getElementById('typingIndicator');
-            indicator.style.display = 'block';
+        if (typingChannel) {
+            typingChannel.send({
+                type: 'broadcast',
+                event: 'typing',
+                payload: { user: currentUser }
+            });
+        }
+    });
 
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                indicator.style.display = 'none';
-            }, 2500);
-        })
-        .subscribe();
-}
-
-// টাইপ করলে পাঠাও
-msgInput.addEventListener('input', () => {
-    if (!currentUser) return;
-
-    if (typingChannel) {
-        typingChannel.send({
-            type: 'broadcast',
-            event: 'typing',
-            payload: { user: currentUser }
-        });
-    }
-});
-
-// User চেঞ্জ হলে typing channel চালু করো
-userDropdown.addEventListener('change', () => {
-    if (userDropdown.value) {
-        setupTyping();
-    }
-});
-    
-    
+    userDropdown.addEventListener('change', () => {
+        if (userDropdown.value) {
+            setupTyping();
+        }
+    });
+        
     init();
 });
