@@ -691,7 +691,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (choice) {
                 openCameraModal();
             } else {
-                statusInput.click();
+                // গ্যালারি ওপেন করার জন্য ডাইনামিক ইনপুট তৈরি
+                const tempInput = document.createElement('input');
+                tempInput.type = 'file';
+                tempInput.accept = 'image/*,video/*';
+                tempInput.style.display = 'none';
+                document.body.appendChild(tempInput);
+                
+                tempInput.addEventListener('change', function(e) {
+                    handleStatusUpload(e);
+                    document.body.removeChild(tempInput);
+                });
+                
+                tempInput.click();
             }
         } else {
             statusInput.click();
