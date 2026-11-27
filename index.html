@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ii</title>
+    <title>i</title>
     <style>
         *{box-sizing:border-box}
         html,body{height:100%;margin:0;overflow:hidden}
@@ -459,7 +459,7 @@
             30% { transform: translateY(-4px); opacity: 1; }
         }
 
-        /* Custom Camera Modal Styles */
+        /* Custom Camera Modal Styles (status video recorder) */
         #cameraModal {
             display: none;
             position: fixed;
@@ -490,6 +490,222 @@
         #startRecordBtn { background: #ef4444; color: white; }
         #stopRecordBtn { background: #3b82f6; color: white; display: none; }
         #closeCameraBtn { background: #334155; color: white; }
+
+        /* ============================================================
+           GALLERY CHOICE POPUP (OK = Camera / Cancel = Gallery)
+           ============================================================ */
+        #galleryChoiceOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #galleryChoiceOverlay.show {
+            display: flex;
+        }
+        #galleryChoiceBox {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 20px;
+            max-width: 340px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        #galleryChoiceBox h3 {
+            color: #fff;
+            margin: 0 0 10px;
+            font-size: 17px;
+        }
+        #galleryChoiceBox p {
+            color: #94a3b8;
+            font-size: 13px;
+            margin: 0 0 18px;
+            line-height: 1.4;
+        }
+        #galleryChoiceBox .choice-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        #galleryChoiceBox .choice-buttons button {
+            flex: 1;
+            padding: 12px 0;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 10px;
+            margin: 0;
+        }
+        #galleryChoiceOK { background: #10b981; }
+        #galleryChoiceCancel { background: #475569; }
+
+        /* ============================================================
+           PHOTO CAPTURE MODAL (multi-shot, front/rear switch)
+           ============================================================ */
+        #photoCaptureModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 9998;
+            flex-direction: column;
+        }
+        #photoCaptureModal.show {
+            display: flex;
+        }
+        #photoCaptureStage {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #photoCaptureVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #photoCaptureVideo.mirrored {
+            transform: scaleX(-1);
+        }
+        #photoCaptureFlash {
+            position: absolute;
+            inset: 0;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+        }
+        #photoCaptureFlash.flash {
+            opacity: 1;
+        }
+        #photoCaptureTop {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 2;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+        }
+        #photoCaptureTop .counter {
+            color: #fff;
+            font-size: 13px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 12px;
+            border-radius: 14px;
+        }
+        #photoCaptureTop button {
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            font-size: 18px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #photoCaptureBottom {
+            background: #000;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #photoCaptureThumbs {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            min-height: 0;
+            padding-bottom: 2px;
+        }
+        #photoCaptureThumbs .thumb-wrap {
+            position: relative;
+            flex-shrink: 0;
+        }
+        #photoCaptureThumbs img {
+            width: 54px;
+            height: 54px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            display: block;
+        }
+        #photoCaptureThumbs .thumb-remove {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ef4444;
+            color: #fff;
+            font-size: 12px;
+            line-height: 1;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #photoCaptureControls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        #photoCaptureControls .side-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #1e293b;
+            color: #fff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+        }
+        #photoShutterBtn {
+            width: 74px;
+            height: 74px;
+            border-radius: 50%;
+            background: #fff;
+            border: 5px solid #475569;
+            margin: 0;
+            padding: 0;
+            flex-shrink: 0;
+        }
+        #photoShutterBtn:active {
+            transform: scale(0.94);
+        }
+        #photoCaptureDoneBtn {
+            background: #10b981;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            margin: 0;
+        }
+        #photoCaptureDoneBtn:disabled {
+            background: #334155;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+        #photoCaptureMsg {
+            color: #94a3b8;
+            font-size: 12px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -522,7 +738,7 @@
         <button class="statusUploadBtn" id="statusUploadBtn">📋</button>
         
         <!-- Hidden File Inputs -->
-        <input type="file" id="imageInput" accept="image/*" style="display:none;">
+        <input type="file" id="imageInput" accept="image/*" multiple style="display:none;">
         <input type="file" id="statusInput" accept="image/*,video/*" style="display:none;">
         
         <textarea id="msg" placeholder="Type a message" rows="1"></textarea>
@@ -556,13 +772,52 @@
     </div>
 </div>
 
-<!-- Custom Camera Modal for Story -->
+<!-- Custom Camera Modal for Story (unchanged) -->
 <div id="cameraModal">
     <video id="cameraPreview" autoplay playsinline muted></video>
     <div class="controls">
         <button id="closeCameraBtn">Cancel</button>
         <button id="startRecordBtn">🔴 Record</button>
         <button id="stopRecordBtn">⏹️ Stop & Send</button>
+    </div>
+</div>
+
+<!-- ============================================================
+     GALLERY CHOICE POPUP
+     OK     -> open in-app photo camera (Android 11+ safe)
+     Cancel -> open real gallery/file picker (multi-select)
+     ============================================================ -->
+<div id="galleryChoiceOverlay">
+    <div id="galleryChoiceBox">
+        <h3>📷 Choose Source</h3>
+        <p><b>OK</b> = Open Camera<br><b>Cancel</b> = Open Gallery</p>
+        <div class="choice-buttons">
+            <button id="galleryChoiceOK">OK</button>
+            <button id="galleryChoiceCancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     PHOTO CAPTURE MODAL (multi-shot, front/rear, preview, confirm)
+     ============================================================ -->
+<div id="photoCaptureModal">
+    <div id="photoCaptureStage">
+        <video id="photoCaptureVideo" autoplay playsinline muted></video>
+        <div id="photoCaptureFlash"></div>
+        <div id="photoCaptureTop">
+            <span class="counter" id="photoCaptureCounter">0 captured</span>
+            <button id="photoCaptureCloseBtn" type="button">✕</button>
+        </div>
+    </div>
+    <div id="photoCaptureBottom">
+        <div id="photoCaptureThumbs"></div>
+        <div id="photoCaptureMsg"></div>
+        <div id="photoCaptureControls">
+            <button class="side-btn" id="photoFlipBtn" type="button" title="Switch camera">🔄</button>
+            <button id="photoShutterBtn" type="button" title="Capture"></button>
+            <button id="photoCaptureDoneBtn" type="button" disabled>Done</button>
+        </div>
     </div>
 </div>
 
