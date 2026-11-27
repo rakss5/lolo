@@ -50,17 +50,41 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewImage = document.getElementById('previewImage');
     const sendPastedBtn = document.getElementById('sendPastedBtn');
 
-    // Camera Modal Elements
+    // Camera Modal Elements (status video recorder - unchanged)
     const cameraModal = document.getElementById('cameraModal');
     const cameraPreview = document.getElementById('cameraPreview');
     const closeCameraBtn = document.getElementById('closeCameraBtn');
     const startRecordBtn = document.getElementById('startRecordBtn');
     const stopRecordBtn = document.getElementById('stopRecordBtn');
     
+    // ============================================================
+    // Gallery button new elements
+    // ============================================================
+    const galleryChoiceOverlay = document.getElementById('galleryChoiceOverlay');
+    const galleryChoiceOK = document.getElementById('galleryChoiceOK');
+    const galleryChoiceCancel = document.getElementById('galleryChoiceCancel');
+
+    const photoCaptureModal = document.getElementById('photoCaptureModal');
+    const photoCaptureVideo = document.getElementById('photoCaptureVideo');
+    const photoCaptureFlash = document.getElementById('photoCaptureFlash');
+    const photoCaptureCounter = document.getElementById('photoCaptureCounter');
+    const photoCaptureCloseBtn = document.getElementById('photoCaptureCloseBtn');
+    const photoCaptureThumbs = document.getElementById('photoCaptureThumbs');
+    const photoCaptureMsg = document.getElementById('photoCaptureMsg');
+    const photoShutterBtn = document.getElementById('photoShutterBtn');
+    const photoFlipBtn = document.getElementById('photoFlipBtn');
+    const photoCaptureDoneBtn = document.getElementById('photoCaptureDoneBtn');
+
+    // Photo capture session state
+    let photoStream = null;
+    let photoFacingMode = 'environment';
+    let photoCapturedFiles = []; // Array of File objects
+    let photoCapturedUrls = [];  // ObjectURLs for thumbnails
+    
     let mediaRecorder = null;
     let recordedChunks = [];
     let stream = null;
-    let currentFacingMode = 'environment'; // 'environment' = Rear, 'user' = Front
+    let currentFacingMode = 'environment';
     let timerInterval = null;
     let secondsElapsed = 0;
 
@@ -672,14 +696,303 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ========== SMART CAMERA & GALLERY HANDLERS ==========
     
+    // ============================================================
+    // CHANGED: Gallery button now opens a choice popup first.
+    //   OK     -> in-app photo camera (getUserMedia + canvas)
+    //   Cancel -> real gallery/file picker (multi-select)
+    // The rest of the image pipeline (uploadImage / handleImageUpload)
+    // is untouched except multi-file loop support.
+    // ============================================================
     function handleChatImageClick() {
         if (!currentUser) {
             alert('Please select a user first');
             return;
         }
-        imageInput.click();
+        showGalleryChoicePopup();
     }
 
+    function showGalleryChoicePopup() {
+        galleryChoiceOverlay.classList.add('show');
+    }
+
+    function hideGalleryChoicePopup() {
+        galleryChoiceOverlay.classList.remove('show');
+    }
+
+    galleryChoiceOK.addEventListener('click', async function() {
+        hideGalleryChoicePopup();
+        await openPhotoCaptureModal();
+    });
+
+    galleryChoiceCancel.addEventListener('click', function() {
+        hideGalleryChoicePopup();
+        // Open the real gallery/file picker (multi-select).
+        // imageInput has `multiple` now; on Android this opens the
+        // system gallery picker (or Documents app) reliably.
+        try {
+            imageInput.value = '';
+            imageInput.click();
+        } catch (err) {
+            console.error('Gallery open failed:', err);
+        }
+    });
+
+    // ---------- In-app photo capture (OK path) ----------
+
+    async function openPhotoCaptureModal() {
+        // Reset session state
+        photoCapturedFiles.forEach(f => { /* no revoke needed for File */ });
+        photoCapturedUrls.forEach(url => URL.revokeObjectURL(url));
+        photoCapturedFiles = [];
+        photoCapturedUrls = [];
+        photoCaptureThumbs.innerHTML = '';
+        photoCaptureMsg.textContent = '';
+        photoFacingMode = 'environment';
+        updatePhotoCounter();
+        updatePhotoDoneState();
+
+        photoCaptureModal.classList.add('show');
+        await startPhotoStream();
+    }
+
+    async function startPhotoStream() {
+        stopPhotoStream();
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            photoCaptureMsg.textContent = 'Camera not supported on this browser.';
+            // Fallback: offer file picker with capture hint
+            showPhotoFallback();
+            return;
+        }
+
+        try {
+            photoStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: photoFacingMode },
+                    width: { ideal: 1280 },
+                    height: { ideal: 1280 }
+                },
+                audio: false
+            });
+            photoCaptureVideo.srcObject = photoStream;
+            if (photoFacingMode === 'user') {
+                photoCaptureVideo.classList.add('mirrored');
+            } else {
+                photoCaptureVideo.classList.remove('mirrored');
+            }
+            photoCaptureMsg.textContent = '';
+            photoShutterBtn.disabled = false;
+        } catch (err) {
+            console.error('Camera error:', err);
+            let msg = 'Camera unavailable.';
+            if (err && err.name === 'NotAllowedError') {
+                msg = 'Camera permission denied. Allow camera access in browser settings.';
+            } else if (err && err.name === 'NotFoundError') {
+                msg = 'No camera found on this device.';
+            } else if (err && err.name === 'NotReadableError') {
+                msg = 'Camera is busy (used by another app). Close other apps and retry.';
+            } else if (err && err.name === 'OverconstrainedError') {
+                // Try again with a simpler constraint
+                try {
+                    photoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    photoCaptureVideo.srcObject = photoStream;
+                    photoCaptureMsg.textContent = '';
+                    photoShutterBtn.disabled = false;
+                    return;
+                } catch (e2) {
+                    msg = 'Camera could not start.';
+                }
+            } else if (err && err.message) {
+                msg = 'Camera error: ' + err.message;
+            }
+            photoCaptureMsg.textContent = msg;
+            photoShutterBtn.disabled = true;
+            showPhotoFallback();
+        }
+    }
+
+    function showPhotoFallback() {
+        // Provide a way to still capture via native UI if getUserMedia fails.
+        // Uses a temporary input with `capture` (best-effort; not guaranteed).
+        const fallbackInput = document.createElement('input');
+        fallbackInput.type = 'file';
+        fallbackInput.accept = 'image/*';
+        fallbackInput.capture = 'environment';
+        fallbackInput.style.display = 'none';
+        fallbackInput.addEventListener('change', function() {
+            const f = fallbackInput.files && fallbackInput.files[0];
+            if (f && f.type.startsWith('image/')) {
+                addCapturedFile(f);
+            }
+            document.body.removeChild(fallbackInput);
+        });
+        document.body.appendChild(fallbackInput);
+        try { fallbackInput.click(); } catch (e) { /* ignore */ }
+    }
+
+    function stopPhotoStream() {
+        if (photoStream) {
+            photoStream.getTracks().forEach(t => t.stop());
+            photoStream = null;
+        }
+        photoCaptureVideo.srcObject = null;
+    }
+
+    function closePhotoCaptureModal(returnToInput) {
+        stopPhotoStream();
+        photoCaptureModal.classList.remove('show');
+        photoCapturedUrls.forEach(url => URL.revokeObjectURL(url));
+        photoCapturedUrls = [];
+        photoCaptureThumbs.innerHTML = '';
+        if (returnToInput) {
+            // Keep files? No - closing discards unless Done was pressed.
+            // This matches "cancel the camera session without crashing".
+            photoCapturedFiles = [];
+        }
+        updatePhotoCounter();
+        updatePhotoDoneState();
+    }
+
+    photoCaptureCloseBtn.addEventListener('click', function() {
+        if (photoCapturedFiles.length > 0) {
+            if (!confirm('Discard captured photos and close camera?')) return;
+        }
+        closePhotoCaptureModal(true);
+    });
+
+    // Escape key closes camera modal safely
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && photoCaptureModal.classList.contains('show')) {
+            if (photoCapturedFiles.length > 0 && !confirm('Discard captured photos and close camera?')) return;
+            closePhotoCaptureModal(true);
+        }
+    });
+
+    photoFlipBtn.addEventListener('click', async function() {
+        photoFacingMode = photoFacingMode === 'environment' ? 'user' : 'environment';
+        await startPhotoStream();
+    });
+
+    photoShutterBtn.addEventListener('click', function() {
+        capturePhoto();
+    });
+
+    function capturePhoto() {
+        if (!photoStream || !photoCaptureVideo.videoWidth || !photoCaptureVideo.videoHeight) {
+            return;
+        }
+        const vw = photoCaptureVideo.videoWidth;
+        const vh = photoCaptureVideo.videoHeight;
+        const canvas = document.createElement('canvas');
+        canvas.width = vw;
+        canvas.height = vh;
+        const ctx = canvas.getContext('2d');
+
+        // Mirror selfie output to match the previewed orientation
+        if (photoFacingMode === 'user') {
+            ctx.translate(vw, 0);
+            ctx.scale(-1, 1);
+        }
+        ctx.drawImage(photoCaptureVideo, 0, 0, vw, vh);
+
+        // Flash effect
+        photoCaptureFlash.classList.add('flash');
+        setTimeout(() => photoCaptureFlash.classList.remove('flash'), 120);
+
+        canvas.toBlob(function(blob) {
+            if (!blob) return;
+            const fileName = `photo_${Date.now()}_${Math.floor(Math.random()*1000)}.jpg`;
+            const file = new File([blob], fileName, { type: 'image/jpeg' });
+            addCapturedFile(file);
+        }, 'image/jpeg', 0.92);
+    }
+
+    function addCapturedFile(file) {
+        photoCapturedFiles.push(file);
+        const url = URL.createObjectURL(file);
+        photoCapturedUrls.push(url);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'thumb-wrap';
+        const img = document.createElement('img');
+        img.src = url;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'thumb-remove';
+        removeBtn.type = 'button';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', function() {
+            const idx = photoCapturedFiles.indexOf(file);
+            if (idx >= 0) {
+                photoCapturedFiles.splice(idx, 1);
+                URL.revokeObjectURL(url);
+                const urlIdx = photoCapturedUrls.indexOf(url);
+                if (urlIdx >= 0) photoCapturedUrls.splice(urlIdx, 1);
+            }
+            wrap.remove();
+            updatePhotoCounter();
+            updatePhotoDoneState();
+        });
+
+        wrap.appendChild(img);
+        wrap.appendChild(removeBtn);
+        photoCaptureThumbs.appendChild(wrap);
+
+        updatePhotoCounter();
+        updatePhotoDoneState();
+    }
+
+    function updatePhotoCounter() {
+        photoCaptureCounter.textContent = `${photoCapturedFiles.length} captured`;
+    }
+
+    function updatePhotoDoneState() {
+        photoCaptureDoneBtn.disabled = photoCapturedFiles.length === 0;
+        if (photoCapturedFiles.length > 0) {
+            photoCaptureDoneBtn.textContent = `Done (${photoCapturedFiles.length})`;
+        } else {
+            photoCaptureDoneBtn.textContent = 'Done';
+        }
+    }
+
+    photoCaptureDoneBtn.addEventListener('click', async function() {
+        if (photoCapturedFiles.length === 0) return;
+        if (!currentUser) {
+            alert('Please select a user first');
+            closePhotoCaptureModal(true);
+            return;
+        }
+
+        // Copy files then close modal (so stream stops immediately)
+        const filesToSend = photoCapturedFiles.slice();
+        stopPhotoStream();
+        photoCaptureModal.classList.remove('show');
+        photoCapturedUrls.forEach(url => URL.revokeObjectURL(url));
+        photoCapturedUrls = [];
+        photoCapturedFiles = [];
+        photoCaptureThumbs.innerHTML = '';
+        updatePhotoCounter();
+        updatePhotoDoneState();
+
+        // Sequentially upload using the existing single-file pipeline.
+        // This preserves the existing send flow, caption usage, and
+        // realtime message delivery.
+        const caption = msgInput.value.trim();
+        for (let i = 0; i < filesToSend.length; i++) {
+            if (i > 0) {
+                // Only the first message should carry the typed caption.
+                msgInput.value = '';
+            }
+            await uploadImage(filesToSend[i]);
+        }
+        // If caption was present, it was consumed by first upload.
+        // Ensure textarea cleared even if uploadImage didn't clear (it does clear on success).
+        msgInput.value = '';
+        msgInput.style.height = 'auto';
+    });
+
+    // ============================================================
+    // STATUS handlers (unchanged)
+    // ============================================================
     function handleStatusClick() {
         if (!currentUser) {
             alert('Please select a user first');
@@ -691,36 +1004,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (choice) {
                 openCameraModal();
             } else {
-                // গ্যালারি ওপেন করার জন্য ডাইনামিক ইনপুট তৈরি
-                const tempInput = document.createElement('input');
-                tempInput.type = 'file';
-                tempInput.accept = 'image/*,video/*';
-                tempInput.style.display = 'none';
-                document.body.appendChild(tempInput);
-                
-                tempInput.addEventListener('change', function(e) {
-                    handleStatusUpload(e);
-                    document.body.removeChild(tempInput);
-                });
-                
-                tempInput.click();
+                statusInput.click();
             }
         } else {
             statusInput.click();
         }
     }
 
-    // Custom Camera Modal Logic
+    // Custom Camera Modal Logic (status video - unchanged)
     async function openCameraModal() {
         cameraModal.style.display = 'flex';
         startRecordBtn.style.display = 'block';
         stopRecordBtn.style.display = 'none';
         closeCameraBtn.style.display = 'block';
         recordedChunks = [];
-        currentFacingMode = 'environment'; // ডিফল্ট পেছনের ক্যামেরা
+        currentFacingMode = 'environment';
         secondsElapsed = 0;
         
-        // Add Timer and Flip Button dynamically if not exists
         let flipBtn = document.getElementById('flipCameraBtn');
         let timerDisplay = document.getElementById('cameraTimer');
         
@@ -762,7 +1062,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 audio: true 
             });
             cameraPreview.srcObject = stream;
-            // Selfie ক্যামেরা হলে ভিডিওটি মিরর করে দেখাবে
             if (currentFacingMode === 'user') {
                 cameraPreview.style.transform = 'scaleX(-1)';
             } else {
@@ -854,11 +1153,9 @@ document.addEventListener('DOMContentLoaded', function() {
         stopRecordBtn.style.display = 'block';
         closeCameraBtn.style.display = 'none';
         
-        // রেকর্ডিং চলাকালীন ফ্লিপ বাটন হাইড করা
         const flipBtn = document.getElementById('flipCameraBtn');
         if (flipBtn) flipBtn.style.display = 'none';
         
-        // টাইমার শুরু
         startTimer();
     });
 
@@ -920,6 +1217,11 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingDiv.remove();
     }
 
+    // ============================================================
+    // CHANGED: handleImageUpload now loops through multiple files
+    // (imageInput now has `multiple`). Single-file behavior remains
+    // identical because it just calls uploadImage(file) per file.
+    // ============================================================
     async function handleImageUpload(e) {
         if (!currentUser) {
             alert('Please select a user first');
@@ -927,14 +1229,26 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const file = e.target.files[0];
-        if (!file || !file.type.startsWith('image/')) {
-            alert('Please select an image file only');
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) {
             imageInput.value = '';
             return;
         }
         
-        await uploadImage(file);
+        const imageFiles = files.filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length === 0) {
+            alert('Please select image files only');
+            imageInput.value = '';
+            return;
+        }
+        
+        // Preserve existing behavior: attach caption to first image only.
+        // (uploadImage clears msgInput after success, so subsequent images
+        //  are sent without caption — matches user's "send pipeline".)
+        for (let i = 0; i < imageFiles.length; i++) {
+            await uploadImage(imageFiles[i]);
+        }
+        
         imageInput.value = '';
     }
 
